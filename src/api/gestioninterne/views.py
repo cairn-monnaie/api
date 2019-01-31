@@ -31,7 +31,7 @@ def sortie_coffre(request):
     sortie_coffre_query_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_coffre']),
         'amount': request.data['amount'],  # montant saisi par l'utilisateur
-        'currency': str(settings.CYCLOS_CONSTANTS['currencies']['eusko']),
+        'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
         'to': 'SYSTEM',
         'customValues': [
@@ -170,7 +170,7 @@ def entree_coffre(request):
         payment_query_data = {
             'type': str(settings.CYCLOS_CONSTANTS['payment_types']['entree_coffre']),
             'amount': payment['amount'],  # montant de l'opération d'origine
-            'currency': str(settings.CYCLOS_CONSTANTS['currencies']['eusko']),
+            'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
             'from': 'SYSTEM',
             'to': 'SYSTEM',
             'customValues': custom_values,
@@ -250,11 +250,11 @@ def payments_available_for_entrees_eusko(request):
     if query_data['result']['totalCount'] == 0:
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    # Il faut filtrer et ne garder que les paiements de type sortie_caisse_eusko_bdc
+    # Il faut filtrer et ne garder que les paiements de type sortie_caisse_mlc_bdc
     filtered_data = [
         item
         for item in query_data['result']['pageItems']
-        if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_caisse_eusko_bdc'])
+        if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_caisse_mlc_bdc'])
     ]
     return Response(filtered_data)
 
@@ -1292,7 +1292,7 @@ def change_par_virement(request):
         change_numerique_eusko = {
             'type': str(settings.CYCLOS_CONSTANTS['payment_types']['change_numerique_en_ligne_versement_des_eusko']),  # noqa
             'amount': float(serializer.data['amount']),
-            'currency': str(settings.CYCLOS_CONSTANTS['currencies']['eusko']),
+            'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
             'from': 'SYSTEM',
             'to': adherent_cyclos_id,
             'customValues': [{
@@ -1361,7 +1361,7 @@ def paiement_cotisation_eusko_numerique(request):
     query_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['virement_inter_adherent']),
         'amount': serializer.data['amount'],
-        'currency': str(settings.CYCLOS_CONSTANTS['currencies']['eusko']),
+        'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': member_cyclos_id,
         'to': euskal_moneta_cyclos_id,
         'description': 'Cotisation - {} - {}'.format(member['login'], member_name),

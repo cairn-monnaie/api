@@ -1,4 +1,4 @@
-version: '2'
+version: '3'
 
 services:
   api:
@@ -22,7 +22,7 @@ services:
       - dolibarr-app
       - cyclos-app
     networks:
-      - eusko_net
+      - mlc_net
 
   # selenium:
   #   image: selenium/standalone-firefox-debug
@@ -33,7 +33,7 @@ services:
   #     - 4444:4444
   #     - 5900:5900
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
 
   dolibarr-app:
     image: euskalmoneta/dolibarr:custom
@@ -47,7 +47,7 @@ services:
       - dolibarr-db
       - cyclos-app
     networks:
-      - eusko_net
+      - mlc_net
 
   dolibarr-db:
     image: mariadb:10.1
@@ -60,10 +60,10 @@ services:
       - MYSQL_USER=pass
       - MYSQL_PASSWORD=pass
     networks:
-      - eusko_net
+      - mlc_net
 
   cyclos-app:
-    image: cyclos/cyclos:4.6.2
+    image: cyclos/cyclos:4.11
     ports:
       - 8081:8080
     environment:
@@ -74,7 +74,7 @@ services:
     links:
       - cyclos-db
     networks:
-      - eusko_net
+      - mlc_net
 
   cyclos-db:
     image: cyclos/db
@@ -86,12 +86,12 @@ services:
       - POSTGRES_USER=cyclos
       - POSTGRES_PASSWORD=cyclos
     networks:
-      - eusko_net
+      - mlc_net
 
   # sentry-redis:
   #   image: redis
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
 
   # sentry-postgres:
   #   image: postgres
@@ -101,7 +101,7 @@ services:
   #   volumes:
   #     - ./data/postgresql:/var/lib/postgresql/data
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
 
   # sentry:
   #   image: sentry
@@ -117,7 +117,7 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
 
   # sentry-cron:
   #   image: sentry
@@ -131,7 +131,7 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
   #   command: sentry run cron
 
   # sentry-worker:
@@ -146,9 +146,9 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - eusko_net
+  #     - mlc_net
   #   command: sentry run worker
 
 networks:
-  eusko_net:
+  mlc_net:
     driver: bridge
