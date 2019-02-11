@@ -888,28 +888,6 @@ def depot_mlc_numerique(request):
     }
     res = cyclos.post(method='payment/perform', data=depot_mlc_numerique_data)['result']
 
-    #@WARNING : utile uniquement pour le cairn
-    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
-    #Otherwise, the property 'transferId' would not be available
-    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
-    data_cel = {
-        'paymentID': res['transferId'],
-        'amount': request.data['amount'],
-        'fromAccountNumber': transfer['from']['number'],
-        'toAccountNumber': transfer['to']['number'],
-        'reason': 'Change numérique',
-        'description': res['description'],
-        'cyclos_token': request.user.profile.cyclos_token
-    }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','deposit')
-
-    try:
-        res = requests.post(query_cel, json=data_cel)
-        # We don't have errors in our response, we can go on... and handle the response in our view.
-        log.info("response_data: {}".format(res.content))
-    except Exception as e:
-        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
     return Response(depot_mlc_numerique_data)
 
 
@@ -992,28 +970,6 @@ def retrait_mlc_numerique(request):
         'description': 'Retrait - {}'.format(request.user.profile.lastname),
     }
     res = cyclos.post(method='payment/perform', data=debit_compte_data)['result']
-
-    #@WARNING : utile uniquement pour le cairn
-    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
-    #Otherwise, the property 'transferId' would not be available
-    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
-    data_cel = {
-        'paymentID': res['transferId'],
-        'amount': request.data['amount'],
-        'fromAccountNumber': transfer['from']['number'],
-        'toAccountNumber': transfer['to']['number'],
-        'reason': 'Change numérique',
-        'description': res['description'],
-        'cyclos_token': request.user.profile.cyclos_token
-    }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','withdrawal')
-
-    try:
-        res = requests.post(query_cel, json=data_cel)
-        # We don't have errors in our response, we can go on... and handle the response in our view.
-        log.info("response_data: {}".format(res.content))
-    except Exception as e:
-        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     # Retrait des billets
     retrait_billets_data = {
@@ -1184,25 +1140,4 @@ def change_euro_mlc_numeriques(request):
     }
     res = cyclos.post(method='payment/perform', data=query_data)['result']
 
-    #@WARNING : utile uniquement pour le cairn
-    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
-    #Otherwise, the property 'transferId' would not be available
-    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
-    data_cel = {
-        'paymentID': res['transferId'],
-        'amount': request.data['amount'],
-        'fromAccountNumber': transfer['from']['number'],
-        'toAccountNumber': transfer['to']['number'],
-        'reason': 'Change numérique',
-        'description': res['description'],
-        'cyclos_token': request.user.profile.cyclos_token
-    }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','conversion')
-
-    try:
-        res = requests.post(query_cel, json=data_cel)
-        # We don't have errors in our response, we can go on... and handle the response in our view.
-        log.info("response_data: {}".format(res.content))
-    except Exception as e:
-        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
     return Response({'status': 'OK'})
