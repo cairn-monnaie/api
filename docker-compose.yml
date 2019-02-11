@@ -1,4 +1,9 @@
-version: '3'
+version: '3.5'
+
+networks:
+  mlc_net:
+    driver: bridge
+    name: mlc_net
 
 services:
   api:
@@ -10,6 +15,12 @@ services:
     ports:
       - 8000:8000
     environment:
+      - CURRENCY_SLUG=cairn
+      - CURRENCY_SYMBOL=CRN
+      - ENV=dev
+      - SESSION_TIMEOUT=1500
+      - MIN_LENGTH_PWD=4
+      - MAX_LENGTH_PWD=25 
       - DJANGO_DEBUG=True
       - API_PUBLIC_URL=http://localhost:8000
       - DOLIBARR_PUBLIC_URL=http://localhost:8080
@@ -19,8 +30,8 @@ services:
       - EMAIL_NOTIFICATION_GESTION=gestion@euskalmoneta.org
       - RAVEN_CONFIG_DSN=http://46498c24303d4b27828e5e47ce927818:6177efcf6d1d47508f1c22332c8dddaf@sentry:9000/2
     depends_on:
-      - dolibarr-app
       - cyclos-app
+        #      - dolibarr-app
     networks:
       - mlc_net
 
@@ -33,65 +44,67 @@ services:
   #     - 4444:4444
   #     - 5900:5900
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
 
-  dolibarr-app:
-    image: euskalmoneta/dolibarr:custom
-    ports:
-      - 8080:80
-    volumes:
-      - ./data/documents:/var/www/documents
-      - ./etc/dolibarr/conf.php:/var/www/html/conf/conf.php
-      - ./etc/dolibarr/date-timezone.ini:/usr/local/etc/php/conf.d/date-timezone.ini
-    depends_on:
-      - dolibarr-db
-      - cyclos-app
-    networks:
-      - mlc_net
-
-  dolibarr-db:
-    image: mariadb:10.1
-    volumes:
-      - ./etc/dolibarr/dump:/docker-entrypoint-initdb.d
-      - ./data/mariadb:/var/lib/mysql
-    environment:
-      - MYSQL_ROOT_PASSWORD=pass
-      - MYSQL_DATABASE=pass
-      - MYSQL_USER=pass
-      - MYSQL_PASSWORD=pass
-    networks:
-      - mlc_net
-
+  #  dolibarr-app:
+  #    image: euskalmoneta/dolibarr:custom
+  #    ports:
+  #      - 8080:80
+  #    volumes:
+  #      - ./data/documents:/var/www/documents
+  #      - ./etc/dolibarr/conf.php:/var/www/html/conf/conf.php
+  #      - ./etc/dolibarr/date-timezone.ini:/usr/local/etc/php/conf.d/date-timezone.ini
+  #    depends_on:
+  #      - dolibarr-db
+  #      - cyclos-app
+  #    networks:
+  #      - eusko_net
+  #
+  #  dolibarr-db:
+  #    image: mariadb:10.1
+  #    volumes:
+  #      - ./etc/dolibarr/dump:/docker-entrypoint-initdb.d
+  #      - ./data/mariadb:/var/lib/mysql
+  #    environment:
+  #      - MYSQL_ROOT_PASSWORD=pass
+  #      - MYSQL_DATABASE=pass
+  #      - MYSQL_USER=pass
+  #      - MYSQL_PASSWORD=pass
+  #    networks:
+  #      - eusko_net
+  #
+ 
   cyclos-app:
-    image: cyclos/cyclos:4.11
-    ports:
-      - 8081:8080
+    image: cyclos/cyclos:4.11.2
     environment:
-      - DB_HOST=cyclos-db
-      - DB_NAME=cyclos
-      - DB_USER=cyclos
-      - DB_PASSWORD=cyclos
-    links:
-      - cyclos-db
+    - DB_HOST=cyclos-db
+    - DB_NAME=cyclos
+    - DB_USER=cyclos
+    - DB_PASSWORD=cyclos
+    restart: always
+    ports:
+    - '${CYCLOS_PORT}:8080'
     networks:
       - mlc_net
 
   cyclos-db:
     image: cyclos/db
     volumes:
-      - ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql
+      - ./etc/cyclos/dump/cyclos-dump-minimal.sql:/docker-entrypoint-initdb.d/cyclos.sql
       - ./data/cyclos/postgresql:/var/lib/postgresql/data
     environment:
-      - POSTGRES_DB=cyclos
-      - POSTGRES_USER=cyclos
-      - POSTGRES_PASSWORD=cyclos
+    - POSTGRES_DB=cyclos
+    - POSTGRES_USER=cyclos
+    - POSTGRES_PASSWORD=cyclos
+    restart: always
     networks:
       - mlc_net
+
 
   # sentry-redis:
   #   image: redis
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
 
   # sentry-postgres:
   #   image: postgres
@@ -101,7 +114,7 @@ services:
   #   volumes:
   #     - ./data/postgresql:/var/lib/postgresql/data
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
 
   # sentry:
   #   image: sentry
@@ -117,7 +130,7 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
 
   # sentry-cron:
   #   image: sentry
@@ -131,7 +144,7 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
   #   command: sentry run cron
 
   # sentry-worker:
@@ -146,9 +159,7 @@ services:
   #     - sentry-redis:redis
   #     - sentry-postgres:postgres
   #   networks:
-  #     - mlc_net
+  #     - eusko_net
   #   command: sentry run worker
 
-networks:
-  mlc_net:
-    driver: bridge
+
