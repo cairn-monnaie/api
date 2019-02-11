@@ -18,8 +18,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: cel/templates/mails/euskokart_update_pin.txt:5
-#: cel/templates/mails/euskokart_update_pin.txt:9
+#: cel/templates/mails/mlckart_update_pin.txt:5
+#: cel/templates/mails/mlckart_update_pin.txt:9
 #: cel/templates/mails/first_connection.txt:5
 #: cel/templates/mails/first_connection.txt:9
 #: cel/templates/mails/lost_password.txt:5
@@ -35,20 +35,20 @@ msgid ""
 "  "
 msgstr ""
 
-#: cel/templates/mails/euskokart_update_pin.txt:15
-msgid "Le code secret de votre euskokart vient d'être défini"
+#: cel/templates/mails/mlckart_update_pin.txt:15
+msgid "Le code secret de votre mlckart vient d'être défini"
 msgstr ""
 
-#: cel/templates/mails/euskokart_update_pin.txt:17
-msgid "Le code secret de votre euskokart vient d'être modifié"
+#: cel/templates/mails/mlckart_update_pin.txt:17
+msgid "Le code secret de votre mlckart vient d'être modifié"
 msgstr ""
 
-#: cel/templates/mails/euskokart_update_pin.txt:20
+#: cel/templates/mails/mlckart_update_pin.txt:20
 msgid ""
 "Si vous n'êtes pas à l'initiative de cette action, veuillez nous contacter"
 msgstr ""
 
-#: cel/templates/mails/euskokart_update_pin.txt:22
+#: cel/templates/mails/mlckart_update_pin.txt:22
 #: cel/templates/mails/first_connection.txt:25
 #: cel/templates/mails/lost_password.txt:25
 #: members/templates/mails/create_member.txt:23
@@ -56,7 +56,7 @@ msgstr ""
 msgid "Bien cordialement"
 msgstr ""
 
-#: cel/templates/mails/euskokart_update_pin.txt:23
+#: cel/templates/mails/mlckart_update_pin.txt:23
 #: cel/templates/mails/first_connection.txt:26
 #: cel/templates/mails/lost_password.txt:26
 #: members/templates/mails/create_member.txt:24
@@ -217,11 +217,11 @@ msgid "Changement de mot de passe pour votre compte en ligne Eusko"
 msgstr ""
 
 #: cel/views.py:697
-msgid "Modification du code secret de votre euskokart"
+msgid "Modification du code secret de votre mlckart"
 msgstr ""
 
 #: cel/views.py:700
-msgid "Choix du code secret de votre euskokart"
+msgid "Choix du code secret de votre mlckart"
 msgstr ""
 
 #: cel/views.py:746
@@ -263,7 +263,7 @@ msgstr ""
 #: members/templates/mails/create_member.txt:19
 #: members/templates/mails/subscription.txt:19
 msgid ""
-"Vous allez recevoir votre carte d'adhérent ou votre euskokart par courrier "
+"Vous allez recevoir votre carte d'adhérent ou votre mlckart par courrier "
 "dans quelques jours"
 msgstr ""
 

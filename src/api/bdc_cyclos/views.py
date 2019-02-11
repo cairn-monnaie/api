@@ -9,6 +9,9 @@ from bdc_cyclos import serializers
 from cyclos_api import CyclosAPI, CyclosAPIException
 from dolibarr_api import DolibarrAPI, DolibarrAPIException
 
+#@WARNING : utile uniquement pour le cairn, à enlever pour le mouvement SOL
+import requests
+
 log = logging.getLogger()
 
 
@@ -30,8 +33,8 @@ def accounts_summaries(request, login_bdc=None):
 
     # Stock de billets: stock_de_billets_bdc
     # Caisse euros: caisse_euro_bdc
-    # Caisse eusko: caisse_mlc_bdc
-    # Retour eusko: retours_d_mlc_bdc
+    # Caisse mlc: caisse_mlc_bdc
+    # Retour mlc: retours_d_mlc_bdc
     res = {}
     filter_keys = ['stock_de_billets_bdc', 'caisse_euro_bdc', 'caisse_mlc_bdc', 'retours_d_mlc_bdc']
 
@@ -92,16 +95,16 @@ def dedicated_accounts_summaries(request):
         return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
 
     query_data = []
-    # Compte dédié Eusko billet: compte_dedie_eusko_billet
-    # Compte dédié Eusko numérique: compte_dedie_eusko_numerique
-    query_data_billet = [str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_eusko_billet']), None]
+    # Compte dédié Eusko billet: compte_dedie_mlc_billet
+    # Compte dédié Eusko numérique: compte_dedie_mlc_numerique
+    query_data_billet = [str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_mlc_billet']), None]
     query_data.extend(cyclos.post(method='account/getAccountsSummary', data=query_data_billet)['result'])
 
-    query_data_numerique = [str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_eusko_numerique']), None]
+    query_data_numerique = [str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_mlc_numerique']), None]
     query_data.extend(cyclos.post(method='account/getAccountsSummary', data=query_data_numerique)['result'])
 
     res = {}
-    filter_keys = ['compte_dedie_eusko_billet', 'compte_dedie_eusko_numerique']
+    filter_keys = ['compte_dedie_mlc_billet', 'compte_dedie_mlc_numerique']
     for filter_key in filter_keys:
         data = [item
                 for item in query_data
@@ -129,7 +132,8 @@ def deposit_banks_summaries(request):
     # user/search for group = 'Banques de dépot'
     banks_data = cyclos.post(method='user/search',
                              data={'groups': [settings.CYCLOS_CONSTANTS['groups']['banques_de_depot']]})
-    bank_names = [{'label': item['display'], 'value': item['id'], 'shortLabel': item['shortDisplay']}
+    #@WARNING : item properties may be 'display' or 'shortDisplay' instead of name and username respectively
+    bank_names = [{'label': item['name'], 'value': item['id'], 'shortLabel': item['username']}
                   for item in banks_data['result']['pageItems']]
 
     res = {}
@@ -272,9 +276,9 @@ def sortie_stock(request):
 
 
 @api_view(['POST'])
-def change_euro_eusko(request):
+def change_euro_mlc(request):
     """
-    Change d'€ en eusko pour un adhérent via un BDC.
+    Change d'€ en mlc pour un adhérent via un BDC.
     """
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
@@ -285,20 +289,23 @@ def change_euro_eusko(request):
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
 
     member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
+    member_cyclos = cyclos.get(method='user/load', id=member_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    member_name = member_cyclos['name']
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', login=request.data['member_login'])[0]
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except IndexError:
-        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
-                        status=status.HTTP_400_BAD_REQUEST)
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+#        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except IndexError:
+#        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
+#                        status=status.HTTP_400_BAD_REQUEST)
+#
+#    if dolibarr_member['type'].lower() == 'particulier':
+#        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
+#    else:
+#        member_name = dolibarr_member['company']
 
-    if dolibarr_member['type'].lower() == 'particulier':
-        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
-    else:
-        member_name = dolibarr_member['company']
 
     # payment/perform
     query_data = {
@@ -328,7 +335,7 @@ def change_euro_eusko(request):
 @api_view(['POST'])
 def reconversion(request):
     """
-    Reconversion eusko en euros pour un adhérent (prestataire) via un BDC.
+    Reconversion mlc en euros pour un adhérent (prestataire) via un BDC.
     """
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
@@ -340,7 +347,7 @@ def reconversion(request):
 
     try:
         dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', login=request.data['member_login'])[0]
+        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
     except DolibarrAPIException:
         return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
     except IndexError:
@@ -355,7 +362,7 @@ def reconversion(request):
 
     # payment/perform
     query_data = {
-        'type': str(settings.CYCLOS_CONSTANTS['payment_types']['reconversion_billets_versement_des_eusko']),
+        'type': str(settings.CYCLOS_CONSTANTS['payment_types']['reconversion_billets_versement_des_mlc']),
         'amount': request.data['amount'],
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
@@ -418,7 +425,7 @@ def accounts_history(request):
     elif cyclos_mode == 'gi':
         query_data = ['SYSTEM', None]
         account_types = ['stock_de_billets', 'compte_de_transit',
-                         'compte_dedie_eusko_billet', 'compte_dedie_eusko_numerique']
+                         'compte_dedie_mlc_billet', 'compte_dedie_mlc_numerique']
 
     # Available account types verification
     if request.query_params['account_type'] not in account_types:
@@ -648,7 +655,7 @@ def bank_deposit(request):
     for payment in request.data['selected_payments']:
         transfer_change_status_data = {
             'transfer': payment['id'],  # ID du paiement (récupéré dans l'historique)
-            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_euskal_moneta'])
+            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_l_assocation'])
         }
         cyclos.post(method='transferStatus/changeStatus', data=transfer_change_status_data)
 
@@ -675,20 +682,24 @@ def cash_deposit(request):
     except CyclosAPIException:
         return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        bdc_code = request.data['login_bdc']
-        bdc_name = dolibarr.get(model='users', login=bdc_code)[0]['lastname']
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except (IndexError, KeyError):
-        return Response({'error': 'Unable to get user data from your user!'}, status=status.HTTP_400_BAD_REQUEST)
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+    bdc_code = request.data['login_bdc']
+    bdc_cyclos_id = cyclos.get_member_id_from_login(bdc_code)
+    bdc_cyclos = cyclos.get(method='user/load', id=bdc_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    bdc_name = bdc_cyclos['name']
+
+#        bdc_name = dolibarr.get(model='users', sqlfilters="login='{}'".format(bdc_code))[0]['lastname']
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except (IndexError, KeyError):
+#        return Response({'error': 'Unable to get user data from your user!'}, status=status.HTTP_400_BAD_REQUEST)
 
     if request.data['mode'] == 'cash-deposit':
         payment_type = str(settings.CYCLOS_CONSTANTS['payment_types']['remise_d_euro_en_caisse'])
         currency = str(settings.CYCLOS_CONSTANTS['currencies']['euro'])
         description = "Remise d'espèces - {} - {}".format(bdc_code, bdc_name)
-    elif request.data['mode'] == 'sortie-caisse-eusko':
+    elif request.data['mode'] == 'sortie-caisse-mlc':
         try:
             porteur = request.data['porteur']
         except KeyError:
@@ -696,7 +707,7 @@ def cash_deposit(request):
 
         payment_type = str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_caisse_mlc_bdc'])
         currency = str(settings.CYCLOS_CONSTANTS['currencies']['mlc'])
-        description = 'Sortie caisse eusko - {} - {}'.format(bdc_code, bdc_name)
+        description = 'Sortie caisse mlc - {} - {}'.format(bdc_code, bdc_name)
 
     else:
         return Response({'error': 'Mode parameter is incorrect!'}, status=status.HTTP_400_BAD_REQUEST)
@@ -711,7 +722,7 @@ def cash_deposit(request):
         'description': description
     }
 
-    if request.data['mode'] == 'sortie-caisse-eusko':
+    if request.data['mode'] == 'sortie-caisse-mlc':
         cash_deposit_data.update({'customValues': [
             {
                 'field': str(settings.CYCLOS_CONSTANTS['transaction_custom_fields']['porteur']),
@@ -722,10 +733,10 @@ def cash_deposit(request):
     cyclos.post(method='payment/perform', data=cash_deposit_data)
 
     for payment in request.data['selected_payments']:
-        # Passer tous les paiements à l'origine du dépôt à l'état "Remis à Euskal Moneta"
+        # Passer tous les paiements à l'origine du dépôt à l'état "Remis à l'Association"
         transfer_change_status_data = {
             'transfer': payment['id'],  # ID du paiement (récupéré dans l'historique)
-            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_euskal_moneta'])
+            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_l_assocation'])
         }
         cyclos.post(method='transferStatus/changeStatus', data=transfer_change_status_data)
 
@@ -733,9 +744,9 @@ def cash_deposit(request):
 
 
 @api_view(['POST'])
-def sortie_retour_eusko(request):
+def sortie_retour_mlc(request):
     """
-    sortie_retour_eusko
+    sortie_retour_mlc
     """
     serializer = serializers.SortieRetourEuskoSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
@@ -752,14 +763,18 @@ def sortie_retour_eusko(request):
     except CyclosAPIException:
         return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        bdc_code = request.data['login_bdc']
-        bdc_name = dolibarr.get(model='users', login=bdc_code)[0]['lastname']
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except (IndexError, KeyError):
-        return Response({'error': 'Unable to get user data from your user!'}, status=status.HTTP_400_BAD_REQUEST)
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+    bdc_code = request.data['login_bdc']
+    bdc_cyclos_id = cyclos.get_member_id_from_login(bdc_code)
+    bdc_cyclos = cyclos.get(method='user/load', id=bdc_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    bdc_name = bdc_cyclos['name']
+
+#        bdc_name = dolibarr.get(model='users', sqlfilters="login='{}'".format(bdc_code))[0]['lastname']
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except (IndexError, KeyError):
+#        return Response({'error': 'Unable to get user data from your user!'}, status=status.HTTP_400_BAD_REQUEST)
 
     for payment in request.data['selected_payments']:
         try:
@@ -773,9 +788,9 @@ def sortie_retour_eusko(request):
             return Response({'error': 'Unable to get adherent_id from one of your selected_payments!'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Enregistrer les retours d'eusko
-        sortie_retour_eusko_data = {
-            'type': str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_retours_eusko_bdc']),
+        # Enregistrer les retours d'mlc
+        sortie_retour_mlc_data = {
+            'type': str(settings.CYCLOS_CONSTANTS['payment_types']['sortie_retours_mlc_bdc']),
             'amount': payment['amount'],  # montant de l'opération correspondante
             'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
             'from': cyclos.user_bdc_id,  # ID de l'utilisateur Bureau de change
@@ -790,17 +805,17 @@ def sortie_retour_eusko(request):
                     'linkedEntityValue': request.data['porteur']  # ID du porteur
                 },
             ],
-            # "Sortie retour d'eusko - Bxxx - Nom du BDC
+            # "Sortie retour d'mlc - Bxxx - Nom du BDC
             # Opération de Z12345 - Nom du prestataire" -> description du payment initial
-            'description': 'Sortie retours eusko - {} - {}\n{}'.format(
+            'description': 'Sortie retours mlc - {} - {}\n{}'.format(
                 bdc_code, bdc_name, payment['description'])
         }
-        cyclos.post(method='payment/perform', data=sortie_retour_eusko_data)
+        cyclos.post(method='payment/perform', data=sortie_retour_mlc_data)
 
         # Passer tous les paiements à l'origine du dépôt à l'état "Remis à Euskal Moneta"
         transfer_change_status_data = {
             'transfer': payment['id'],  # ID du paiement (récupéré dans l'historique)
-            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_euskal_moneta'])
+            'newStatus': str(settings.CYCLOS_CONSTANTS['transfer_statuses']['remis_a_l_assocation'])
         }
         cyclos.post(method='transferStatus/changeStatus', data=transfer_change_status_data)
 
@@ -808,9 +823,9 @@ def sortie_retour_eusko(request):
 
 
 @api_view(['POST'])
-def depot_eusko_numerique(request):
+def depot_mlc_numerique(request):
     """
-    depot-eusko-numerique
+    depot-mlc-numerique
     """
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
@@ -820,24 +835,27 @@ def depot_eusko_numerique(request):
     serializer = serializers.DepotEuskoNumeriqueSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
 
+
     member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
+    member_cyclos = cyclos.get(method='user/load', id=member_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    member_name = member_cyclos['name']
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', login=request.data['member_login'])[0]
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except IndexError:
-        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
-                        status=status.HTTP_400_BAD_REQUEST)
-
-    if dolibarr_member['type'].lower() == 'particulier':
-        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
-    else:
-        member_name = dolibarr_member['company']
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+#        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except IndexError:
+#        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
+#                        status=status.HTTP_400_BAD_REQUEST)
+#
+#    if dolibarr_member['type'].lower() == 'particulier':
+#        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
+#    else:
+#        member_name = dolibarr_member['company']
 
     # Retour des Eusko billets
-    retour_eusko_billets_data = {
+    retour_mlc_billets_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['depot_de_billets']),
         'amount': request.data['amount'],  # montant saisi
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
@@ -851,10 +869,10 @@ def depot_eusko_numerique(request):
         ],
         'description': 'Dépôt - {} - {}'.format(request.data['member_login'], member_name),
     }
-    cyclos.post(method='payment/perform', data=retour_eusko_billets_data)
+    cyclos.post(method='payment/perform', data=retour_mlc_billets_data)
 
-    # Crédit du compte Eusko numérique du prestataire
-    depot_eusko_numerique_data = {
+    # Crédit du compte MLC numérique du prestataire
+    depot_mlc_numerique_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['credit_du_compte']),
         'amount': request.data['amount'],  # montant saisi
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
@@ -866,17 +884,39 @@ def depot_eusko_numerique(request):
                 'linkedEntityValue': cyclos.user_bdc_id,  # ID de l'utilisateur Bureau de change
             },
         ],
-        'description': 'Dépôt',
+        'description': 'Dépôt - {}'.format(request.user.profile.lastname),
     }
-    cyclos.post(method='payment/perform', data=depot_eusko_numerique_data)
+    res = cyclos.post(method='payment/perform', data=depot_mlc_numerique_data)['result']
 
-    return Response(depot_eusko_numerique_data)
+    #@WARNING : utile uniquement pour le cairn
+    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
+    #Otherwise, the property 'transferId' would not be available
+    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
+    data_cel = {
+        'paymentID': res['transferId'],
+        'amount': request.data['amount'],
+        'fromAccountNumber': transfer['from']['number'],
+        'toAccountNumber': transfer['to']['number'],
+        'reason': 'Change numérique',
+        'description': res['description'],
+        'cyclos_token': request.user.profile.cyclos_token
+    }
+    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','deposit')
+
+    try:
+        res = requests.post(query_cel, json=data_cel)
+        # We don't have errors in our response, we can go on... and handle the response in our view.
+        log.info("response_data: {}".format(res.content))
+    except Exception as e:
+        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(depot_mlc_numerique_data)
 
 
 @api_view(['POST'])
-def retrait_eusko_numerique(request):
+def retrait_mlc_numerique(request):
     """
-    Retrait eusko: numerique vers billets
+    Retrait mlc: numerique vers billets
     """
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
@@ -887,20 +927,22 @@ def retrait_eusko_numerique(request):
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
 
     member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
+    member_cyclos = cyclos.get(method='user/load', id=member_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    member_name = member_cyclos['name']
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', login=request.data['member_login'])[0]
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except IndexError:
-        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
-                        status=status.HTTP_400_BAD_REQUEST)
-
-    if dolibarr_member['type'].lower() == 'particulier':
-        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
-    else:
-        member_name = dolibarr_member['company']
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+#        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except IndexError:
+#        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
+#                        status=status.HTTP_400_BAD_REQUEST)
+#
+#    if dolibarr_member['type'].lower() == 'particulier':
+#        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
+#    else:
+#        member_name = dolibarr_member['company']
 
     # Verify whether or not member account has enough money
     member_account_summary_query = [member_cyclos_id, None]  # ID de l'adhérent
@@ -947,9 +989,31 @@ def retrait_eusko_numerique(request):
                 'linkedEntityValue': cyclos.user_bdc_id,  # ID de l'utilisateur Bureau de change
             },
         ],
-        'description': 'Retrait',
+        'description': 'Retrait - {}'.format(request.user.profile.lastname),
     }
-    cyclos.post(method='payment/perform', data=debit_compte_data)
+    res = cyclos.post(method='payment/perform', data=debit_compte_data)['result']
+
+    #@WARNING : utile uniquement pour le cairn
+    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
+    #Otherwise, the property 'transferId' would not be available
+    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
+    data_cel = {
+        'paymentID': res['transferId'],
+        'amount': request.data['amount'],
+        'fromAccountNumber': transfer['from']['number'],
+        'toAccountNumber': transfer['to']['number'],
+        'reason': 'Change numérique',
+        'description': res['description'],
+        'cyclos_token': request.user.profile.cyclos_token
+    }
+    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','withdrawal')
+
+    try:
+        res = requests.post(query_cel, json=data_cel)
+        # We don't have errors in our response, we can go on... and handle the response in our view.
+        log.info("response_data: {}".format(res.content))
+    except Exception as e:
+        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     # Retrait des billets
     retrait_billets_data = {
@@ -1049,9 +1113,9 @@ def change_password(request):
 
 
 @api_view(['POST'])
-def change_euro_eusko_numeriques(request):
+def change_euro_mlc_numeriques(request):
     """
-    Change d'€ en eusko numériques pour un adhérent via un BDC.
+    Change d'€ en mlc numériques pour un adhérent via un BDC.
     """
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
@@ -1062,20 +1126,22 @@ def change_euro_eusko_numeriques(request):
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
 
     member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
+    member_cyclos = cyclos.get(method='user/load', id=member_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    member_name = member_cyclos['name']
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', login=request.data['member_login'])[0]
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except IndexError:
-        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
-                        status=status.HTTP_400_BAD_REQUEST)
+#    try:
+#        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
+#        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
+#    except DolibarrAPIException:
+#        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#    except IndexError:
+#        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
+#                        status=status.HTTP_400_BAD_REQUEST)
 
-    if dolibarr_member['type'].lower() == 'particulier':
-        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
-    else:
-        member_name = dolibarr_member['company']
+#    if dolibarr_member['type'].lower() == 'particulier':
+#        member_name = '{} {}'.format(dolibarr_member['firstname'], dolibarr_member['lastname'])
+#    else:
+#        member_name = dolibarr_member['company']
 
     # payment/perform
     bdc_query_data = {
@@ -1116,6 +1182,27 @@ def change_euro_eusko_numeriques(request):
         # "Change numérique - Nom du BDC"
         'description': 'Change numérique - {}'.format(request.user.profile.lastname),
     }
-    cyclos.post(method='payment/perform', data=query_data)
+    res = cyclos.post(method='payment/perform', data=query_data)['result']
 
+    #@WARNING : utile uniquement pour le cairn
+    #get transfer associated to the payment. This is possible because the payment is done immediately (not scheduled)
+    #Otherwise, the property 'transferId' would not be available
+    transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
+    data_cel = {
+        'paymentID': res['transferId'],
+        'amount': request.data['amount'],
+        'fromAccountNumber': transfer['from']['number'],
+        'toAccountNumber': transfer['to']['number'],
+        'reason': 'Change numérique',
+        'description': res['description'],
+        'cyclos_token': request.user.profile.cyclos_token
+    }
+    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','conversion')
+
+    try:
+        res = requests.post(query_cel, json=data_cel)
+        # We don't have errors in our response, we can go on... and handle the response in our view.
+        log.info("response_data: {}".format(res.content))
+    except Exception as e:
+        return Response({'error': 'Unable to perform CEL synchronization!' + str(e)}, status=status.HTTP_400_BAD_REQUEST)
     return Response({'status': 'OK'})

@@ -71,54 +71,71 @@ class MembersAPIView(BaseAPIView):
         return Response(response_obj, status=status.HTTP_201_CREATED)
 
     def list(self, request):
-        email = request.GET.get('email', '')
-        login = request.GET.get('login', '')
-        name = request.GET.get('name', '')
-        valid_login = Member.validate_num_adherent(login)
-        dolibarr_token = request.user.profile.dolibarr_token
+#        email = request.GET.get('email', '')
+#        login = request.GET.get('login', '')
+#        name = request.GET.get('name', '')
+        keyword = request.GET.get('keyword', '')
 
-        if login and valid_login:
-            # We want to search in members by login (N° Adhérent)
-            try:
-                response = self.dolibarr.get(model='members', login=login, api_key=dolibarr_token)
-            except DolibarrAPIException:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(response)
+#        valid_login = Member.validate_num_adherent(login)
+#        dolibarr_token = request.user.profile.dolibarr_token
+        cyclos_token = request.user.profile.cyclos_token
 
-        elif login and not valid_login:
-            return Response({'error': 'You need to provide a *VALID* ?login parameter! (Format: E12345)'},
-                            status=status.HTTP_400_BAD_REQUEST)
+#        if login and valid_login:
+#            # We want to search in members by login (N° Adhérent)
+#            try:
+#                response = self.dolibarr.get(model='members', sqlfilters="login='{}'".format(login), api_key=dolibarr_token)
+#            except DolibarrAPIException:
+#                return Response(status=status.HTTP_204_NO_CONTENT)
+#            return Response(response)
+#
+#        elif login and not valid_login:
+#            return Response({'error': 'You need to provide a *VALID* ?login parameter! (Format: E12345)'},
+#                            status=status.HTTP_400_BAD_REQUEST)
 
-        elif name and len(name) >= 3:
-            # We want to search in members by name (Firstname and Lastname)
-            try:
-                response = self.dolibarr.get(model='members', name=name, api_key=dolibarr_token)
-            except DolibarrAPIException:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            return Response(response)
+#        if name and len(name) >= 3:
+#            # We want to search in members by name (firstname, lastname, societe) in CYCLOS
+#            try:
+#                sqlfilters = "firstname like '%{name}%' or lastname like '%{name}%' or societe like '%{name}%'".format(name=name)
+#                response = self.dolibarr.get(model='members', sqlfilters=sqlfilters, api_key=dolibarr_token)
+#            except DolibarrAPIException:
+#                return Response(status=status.HTTP_204_NO_CONTENT)
+#            return Response(response)
 
-        elif name and len(name) < 3:
-            return Response({'error': 'You need to provide a ?name parameter longer than 2 characters!'},
-                            status=status.HTTP_400_BAD_REQUEST)
+        #@WARNING : the research by name in Cyclos is not reliable because it doesn't fetch data with accents. Login or email 
+        #should be used
+        try:
+            query_data = {
+                    'keywords': keyword,
+                    'userStatus': ['ACTIVE', 'BLOCKED', 'DISABLED']
+                    }
+            response = self.cyclos.post(method='user/search', data=query_data, id=None, token=cyclos_token)
+        except CyclosAPIException:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(response)
 
-        elif email:
-            try:
-                validate_email(email)
-                user_results = self.dolibarr.get(model='members', email=email, api_key=dolibarr_token)
-                user_data = [item
-                             for item in user_results
-                             if item['email'] == email][0]
-                return Response(user_data)
-            except forms.ValidationError:
-                return Response({'error': 'You need to provide a *VALID* ?email parameter! (Format: E12345)'},
-                                status=status.HTTP_400_BAD_REQUEST)
-        else:
-            objects = self.dolibarr.get(model=self.model, api_key=dolibarr_token)
-            paginator = CustomPagination()
-            result_page = paginator.paginate_queryset(objects, request)
 
-            serializer = MemberSerializer(result_page, many=True)
-            return paginator.get_paginated_response(serializer.data)
+#        elif name and len(name) < 3:
+#            return Response({'error': 'You need to provide a ?name parameter longer than 2 characters!'},
+#                            status=status.HTTP_400_BAD_REQUEST)
+#
+#        elif email:
+#            try:
+#                validate_email(email)
+#                user_results = self.dolibarr.get(model='members', sqlfilters="email='{}'".format(email), api_key=dolibarr_token)
+#                user_data = [item
+#                             for item in user_results
+#                             if item['email'] == email][0]
+#                return Response(user_data)
+#            except forms.ValidationError:
+#                return Response({'error': 'You need to provide a *VALID* ?email parameter! (Format: E12345)'},
+#                                status=status.HTTP_400_BAD_REQUEST)
+#        else:
+#            objects = self.dolibarr.get(model='members', api_key=dolibarr_token)
+#            paginator = CustomPagination()
+#            result_page = paginator.paginate_queryset(objects, request)
+#
+#            serializer = MemberSerializer(result_page, many=True)
+#            return paginator.get_paginated_response(serializer.data)
 
     def update(self, request, pk=None):
         # return Response(self.dolibarr.patch(model=self.model, api_key=dolibarr_token))
@@ -156,7 +173,7 @@ class MembersAPIView(BaseAPIView):
             return Response({'error': 'Oops! Something is wrong in your request data: {}'.format(serializer.errors)},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(self.dolibarr.patch(model='members/{}'.format(pk), data=data,
+        return Response(self.dolibarr.put(model='members/{}'.format(pk), data=data,
                                             api_key=request.user.profile.dolibarr_token))
 
 
@@ -225,7 +242,7 @@ class MembersSubscriptionsAPIView(BaseAPIView):
 
         data_res_payment = {'date': arrow.now('Europe/Paris').timestamp, 'type': payment_type,
                             'label': data['label'], 'amount': data['amount']}
-        model_res_payment = 'accounts/{}/lines'.format(payment_account)
+        model_res_payment = 'bankaccounts/{}/lines'.format(payment_account)
         try:
             res_id_payment = self.dolibarr.post(
                 model=model_res_payment, data=data_res_payment, api_key=dolibarr_token)
@@ -241,7 +258,7 @@ class MembersSubscriptionsAPIView(BaseAPIView):
         data_link_sub_payment = {'fk_bank': res_id_payment}
         model_link_sub_payment = 'subscriptions/{}'.format(res_id_subscription)
         try:
-            res_id_link_sub_payment = self.dolibarr.patch(
+            res_id_link_sub_payment = self.dolibarr.put(
                 model=model_link_sub_payment, data=data_link_sub_payment, api_key=dolibarr_token)
 
             log.info("res_id_link_sub_payment: {}".format(res_id_link_sub_payment))
@@ -256,7 +273,7 @@ class MembersSubscriptionsAPIView(BaseAPIView):
                                     'type': 'member', 'url_id': member_id,
                                     'url': '{}/adherents/card.php?rowid={}'.format(
                                         settings.DOLIBARR_PUBLIC_URL, member_id)}
-        model_link_payment_member = 'accounts/{}/lines/{}/links'.format(payment_account, res_id_payment)
+        model_link_payment_member = 'bankaccounts/{}/lines/{}/links'.format(payment_account, res_id_payment)
         try:
             res_id_link_payment_member = self.dolibarr.post(
                 model=model_link_payment_member, data=data_link_payment_member,
@@ -288,15 +305,15 @@ class MembersSubscriptionsAPIView(BaseAPIView):
 
         if 'Eusko' in data['payment_mode']:
             query_data.update(
-                {'type': str(settings.CYCLOS_CONSTANTS['payment_types']['cotisation_en_eusko']),
-                 'currency': str(settings.CYCLOS_CONSTANTS['currencies']['eusko']),
+                {'type': str(settings.CYCLOS_CONSTANTS['payment_types']['cotisation_en_mlc']),
+                 'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
                  'customValues': [
                     {'field': str(settings.CYCLOS_CONSTANTS['transaction_custom_fields']['adherent']),
                      'linkedEntityValue': member_cyclos_id}],
                  'description': 'Cotisation - {} - {}'.format(
                     current_member['login'], member_name),
                  })
-            currency = 'eusko'
+            currency = 'mlc'
         elif 'Euro' in data['payment_mode']:
             query_data.update(
                 {'type': str(settings.CYCLOS_CONSTANTS['payment_types']['cotisation_en_euro']),

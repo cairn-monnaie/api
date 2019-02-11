@@ -32,7 +32,8 @@ class BaseAPIView(viewsets.ViewSet):
         return paginator.get_paginated_response(serializer.data)
 
     def retrieve(self, request, pk=None):
-        return Response(self.dolibarr.get(model=self.model, id=pk, api_key=request.user.profile.dolibarr_token))
+#        return Response(self.dolibarr.get(model=self.model, id=pk, api_key=request.user.profile.dolibarr_token))
+        return Response(self.cyclos.get(method='user/load', id=pk, token=request.user.profile.cyclos_token)['result'])
 
     def create(self, request):
         pass

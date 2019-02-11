@@ -154,8 +154,8 @@ class Member:
 
         try:
             data['array_options'].update({
-                'options_prelevement_auto_cotisation_eusko': data['options_prelevement_auto_cotisation_eusko']})
-            del data['options_prelevement_auto_cotisation_eusko']
+                'options_prelevement_auto_cotisation_mlc': data['options_prelevement_auto_cotisation_mlc']})
+            del data['options_prelevement_auto_cotisation_mlc']
         except KeyError:
             pass
 

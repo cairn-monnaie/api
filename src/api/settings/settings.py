@@ -61,12 +61,11 @@ INSTALLED_APPS = [
 
     'cel',
 
+    'cyclos_data',
     'dolibarr_data',
-    'euskalmoneta_data',
+    'association_data',
 
     'gestioninterne',
-
-    'prestataires',
 
     'corsheaders',
     'wkhtmltopdf',
@@ -207,12 +206,13 @@ DOLIBARR_PUBLIC_URL = os.environ.get('DOLIBARR_PUBLIC_URL')
 BDC_PUBLIC_URL = os.environ.get('BDC_PUBLIC_URL')
 GI_PUBLIC_URL = os.environ.get('GI_PUBLIC_URL')
 CEL_PUBLIC_URL = os.environ.get('CEL_PUBLIC_URL')
+CURRENCY_SLUG = os.environ.get('CURRENCY_SLUG')
 
 # APIs URLs
 DOLIBARR_URL = 'http://dolibarr-app/api/index.php'
-CYCLOS_URL = 'http://cyclos-app:8080/eusko/web-rpc'
+CYCLOS_URL = 'http://cyclos-app:8080/' + CURRENCY_SLUG + '/web-rpc'
 
-# Euskal Moneta internal settings
+# Association internal settings
 DATE_COTISATION_ANTICIPEE = '01/11'  # 1er Novembre
 if DEBUG:
     MINIMUM_PARRAINAGES_3_POURCENTS = 3  # En production, ce sera bien 30 parrainages et non PAS 3 !

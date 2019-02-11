@@ -13,19 +13,18 @@ from dolibarr_api import DolibarrAPI, DolibarrAPIException
 
 log = logging.getLogger(__name__)
 
-
 def authenticate(username, password):
     user = None
 
-    username = get_username_from_username_or_email(username)
+#    username = get_username_from_username_or_email(username)
     if not username:
         raise AuthenticationFailed()
 
-    try:
-        dolibarr = DolibarrAPI()
-        dolibarr_token = dolibarr.login(login=username, password=password, reset=True)
-    except (DolibarrAPIException):
-        raise AuthenticationFailed()
+#    try:
+#        dolibarr = DolibarrAPI()
+#        dolibarr_token = dolibarr.login(login=username, password=password, reset=True)
+#    except (DolibarrAPIException):
+#        raise AuthenticationFailed()
 
     try:
         cyclos = CyclosAPI(mode='login')
@@ -33,37 +32,35 @@ def authenticate(username, password):
             auth_string=b64encode(bytes('{}:{}'.format(username, password), 'utf-8')).decode('ascii'))
     except CyclosAPIException:
         raise AuthenticationFailed()
-
-    try:
-        user_results = dolibarr.get(model='users', login=username, api_key=dolibarr_token)
-        dolibarr_user = [item
-                         for item in user_results
-                         if item['login'] == username][0]
-    except (DolibarrAPIException, KeyError, IndexError):
-        raise AuthenticationFailed()
+#    try:
+#        user_results = dolibarr.get(model='users', sqlfilters="login='{}'".format(username), api_key=dolibarr_token)
+#        dolibarr_user = [item
+#                         for item in user_results
+#                         if item['login'] == username][0]
+#    except (DolibarrAPIException, KeyError, IndexError):
+#        raise AuthenticationFailed()
 
     user, created = User.objects.get_or_create(username=username)
 
     user_profile = user.profile
     user_profile.cyclos_token = cyclos_token
-    user_profile.dolibarr_token = dolibarr_token
+#    user_profile.dolibarr_token = dolibarr_token
 
-
-    # if there is a member linked to this user, load it in order to retrieve its company name
-    user_profile.companyname = ''
-    if dolibarr_user['fk_member']:
-        try:
-            member = dolibarr.get(model='members', id=dolibarr_user['fk_member'], api_key=dolibarr_token)
-            if member['company']:
-                user_profile.companyname = member['company']
-        except DolibarrAPIException:
-            pass
-
-    try:
-        user_profile.firstname = dolibarr_user['firstname']
-        user_profile.lastname = dolibarr_user['lastname']
-    except KeyError:
-        raise AuthenticationFailed()
+#    # if there is a member linked to this user, load it in order to retrieve its company name
+#    user_profile.companyname = ''
+#    if dolibarr_user['fk_member']:
+#        try:
+#            member = dolibarr.get(model='members', id=dolibarr_user['fk_member'], api_key=dolibarr_token)
+#            if member['company']:
+#                user_profile.companyname = member['company']
+#        except DolibarrAPIException:
+#            pass
+#
+#    try:
+    user_profile.firstname = username #dolibarr_user['firstname']
+    user_profile.lastname = username #dolibarr_user['lastname']
+#    except KeyError:
+#        raise AuthenticationFailed()
 
     user_profile.save()
 
@@ -85,7 +82,7 @@ def get_username_from_username_or_email(username_or_email):
                                                       password=settings.APPS_ANONYMOUS_PASSWORD,
                                                       reset=True)
             user_results = dolibarr.get(model='users',
-                                        email=username_or_email,
+                                        sqlfilters="email='{}'".format(username_or_email),
                                         api_key=dolibarr_anonymous_token)
             matching_users = [item
                               for item in user_results
@@ -95,6 +92,7 @@ def get_username_from_username_or_email(username_or_email):
 
         except (DolibarrAPIException, KeyError, IndexError):
             pass
+
 
     except forms.ValidationError:
         # we detected that our "username_or_email" variable is NOT an email so it's a username

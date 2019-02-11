@@ -137,7 +137,8 @@ class CyclosAPI(object):
             member_login_search = self.post(method='user/search', data=query_data)
             member_login_data = [user
                                  for user in member_login_search['result']['pageItems']
-                                 if user['shortDisplay'] == member_login]
+                                 #@WARNING : depending on what Cyclos returns, the property may be shortDisplay instead of username
+                                 if user['username'] == member_login] 
             member_cyclos_id = member_login_data[0]['id']
         except CyclosAPIException:
             raise CyclosAPIException(detail='Unable to connect to Cyclos!')

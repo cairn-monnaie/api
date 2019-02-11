@@ -65,20 +65,20 @@ class BDCAPIView(BaseAPIView):
         except CyclosAPIException:
             return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Création du user dans Dolibarr
-        try:
-            user_id = self.dolibarr.post(
-                model='users', api_key=request.user.profile.dolibarr_token,
-                data={"login": request.data['login'], "lastname": request.data['name']})['id']
-        except (DolibarrAPIException, KeyError):
-            return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Ajouter l'utilisateur au groupe "Opérateurs BDC"
-        try:
-            self.dolibarr.get(model='users/{}/setGroup/{}'.format(
-                user_id, str(settings.DOLIBARR_CONSTANTS['groups']['operateurs_bdc'])))
-        except (DolibarrAPIException, KeyError):
-            return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#        # Création du user dans Dolibarr
+#        try:
+#            user_id = self.dolibarr.post(
+#                model='users', api_key=request.user.profile.dolibarr_token,
+#                data={"login": request.data['login'], "lastname": request.data['name']})
+#        except (DolibarrAPIException, KeyError):
+#            return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
+#
+#        # Ajouter l'utilisateur au groupe "Opérateurs BDC"
+#        try:
+#            self.dolibarr.get(model='users/{}/setGroup/{}'.format(
+#                user_id, str(settings.DOLIBARR_CONSTANTS['groups']['operateurs_bdc'])))
+#        except (DolibarrAPIException, KeyError):
+#            return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(request.data)
 
@@ -108,7 +108,9 @@ class BDCAPIView(BaseAPIView):
         view_all param is used for filtering, it can filter out the bureaux de change that are disabled in Cyclos
         view_all is set to False by default: It doesn't return bureaux de change that are disabled in Cyclos
         """
+
         view_all = request.GET.get('view_all', False)
+
         if view_all and view_all in [True, 'true', 'True', 'yes', 'Yes']:
             # user/search for group = 'bureaux_de_change'
             query_data = {'groups': [str(settings.CYCLOS_CONSTANTS['groups']['bureaux_de_change'])],
@@ -120,7 +122,8 @@ class BDCAPIView(BaseAPIView):
 
         data = self.cyclos.post(method='user/search', data=query_data,
                                 token=request.user.profile.cyclos_token)
-        objects = [{'label': item['display'], 'value': item['id'], 'shortLabel': item['shortDisplay']}
+        #@WARNING : depending on what Cyclos returns, the property may be display and shortDisplay instead of name and username
+        objects = [{'label': item['name'], 'value': item['id'], 'shortLabel': item['username']}
                    for item in data['result']['pageItems']]
 
         paginator = CustomPagination()
@@ -131,17 +134,17 @@ class BDCAPIView(BaseAPIView):
         """
         Close BDC
         """
-        # Récupérer le user Opérateur BDC
-        try:
-            operator_bdc_id = self.dolibarr.get(
-                api_key=request.user.profile.dolibarr_token, model='users', login=pk)[0]['id']
-        except (KeyError, IndexError):
-            return Response({'error': 'Unable to get operator_bdc_id from this username!'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        # Désactiver l'utilisateur Opérateur BDC
-        self.dolibarr.put(model='users/{}'.format(operator_bdc_id),
-                          data={'statut': str(settings.DOLIBARR_CONSTANTS['user_statuses']['disabled'])})
+#        # Récupérer le user Opérateur BDC
+#        try:
+#            operator_bdc_id = self.dolibarr.get(
+#                api_key=request.user.profile.dolibarr_token, model='users', sqlfilters="login='{}'".format(pk))[0]['id']
+#        except (KeyError, IndexError):
+#            return Response({'error': 'Unable to get operator_bdc_id from this username!'},
+#                            status=status.HTTP_400_BAD_REQUEST)
+#
+#        # Désactiver l'utilisateur Opérateur BDC
+#        self.dolibarr.put(model='users/{}'.format(operator_bdc_id),
+#                          data={'statut': str(settings.DOLIBARR_CONSTANTS['user_statuses']['disabled'])})
 
         # Récupérer l'opérateur BDC correspondant au bureau de change
         bdc_operator_cyclos_query = {
