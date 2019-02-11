@@ -48,6 +48,7 @@ def authenticate(username, password):
     user_profile.cyclos_token = cyclos_token
     user_profile.dolibarr_token = dolibarr_token
 
+
     # if there is a member linked to this user, load it in order to retrieve its company name
     user_profile.companyname = ''
     if dolibarr_user['fk_member']:
