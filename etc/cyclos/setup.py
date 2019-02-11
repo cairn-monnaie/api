@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals
 
+import os
 import argparse
 import logging
 
@@ -30,12 +31,17 @@ def get_internal_name(name):
     return slug.replace('-', '_')
 
 # Ensemble des constantes nécessaires au fonctionnement du script
-# A RECOPIER DANS LE SCRIPT init_test_data.py
-NETWORK_INTERNAL_NAME = 'eusko'
-NETWORK_NAME = 'Eusko'
-LOCAL_CURRENCY_NAME = 'Eusko'
-LOCAL_CURRENCY_INTERNAL_NAME = 'eusko'
-LOCAL_CURRENCY_SYMBOL = 'EUS'
+ENV = os.environ.get('ENV')
+LOCAL_CURRENCY_INTERNAL_NAME = os.environ.get('CURRENCY_SLUG')
+NETWORK_INTERNAL_NAME = LOCAL_CURRENCY_INTERNAL_NAME
+LOCAL_CURRENCY_SYMBOL = os.environ.get('CURRENCY_SYMBOL')
+SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT'))
+MAX_LENGTH_PWD = os.environ.get('MAX_LENGTH_PWD')
+
+if ENV != 'prod':
+    MIN_LENGTH_PWD = 4
+else:
+    MIN_LENGTH_PWD = os.environ.get('MIN_LENGTH_PWD')
 
 # Ensemble des constantes nécessaires à l'API.
 constants_by_category = {}
@@ -45,7 +51,7 @@ def add_constant(category, name, value):
     if category not in constants_by_category.keys():
         constants_by_category[category] = {}
     internal_name = get_internal_name(name)
-    
+
     # Replace custom currency names by a standard "mlc" for simplification purposes in cyclos_constants.yml file attributes
     internal_name = internal_name.replace(NETWORK_INTERNAL_NAME,'mlc')
     internal_name = internal_name.replace(LOCAL_CURRENCY_INTERNAL_NAME,'mlc')
@@ -142,6 +148,35 @@ for password_type in password_types:
 logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
 logger.debug('ID_PASSWORD_PIN = %s', ID_PASSWORD_PIN)
 
+# On charge le type de mot de passe pour le modifier : 
+# validation des mots de passe : entre 8 et 25 caractères
+r = requests.get(
+        global_web_services + 'passwordType/load/' + ID_PASSWORD_LOGIN,
+        headers=headers
+        )
+check_request_status(r)
+login_password_config = r.json()['result']
+login_password_config['blockTime'] = {
+        'amount': 0,
+        'field': 'SECONDS'
+        }
+#contrainte de validation sur la taille des mots de passe
+login_password_config['length'] = {
+        'min': MIN_LENGTH_PWD,
+        'max': MAX_LENGTH_PWD,
+        }
+login_password_config['expiresAfter'] = {
+        'amount': 100,
+        'field': 'YEARS'
+        }
+
+r = requests.post(
+        global_web_services + 'passwordType/save/',
+        headers=headers,
+        json=login_password_config
+        )
+check_request_status(r)
+
 # Récupération de la liste des méthodes d'identification.
 logger.info("Récupération de la liste des méthodes d'identification...")
 r = requests.get(global_web_services + 'principalType/list', headers=headers)
@@ -186,12 +221,26 @@ global_default_config['timeFormat'] = 'H24'
 global_default_config['accountNumberConfiguration'] = {
     'enabled': True
 }
+
+# pas de contrainte de validation sur la taille des logins
+global_default_config['usernameLength'] = {
+        'min': None,
+        'max': None
+}
+global_default_config['defaultEmailPrivacy'] = 'VISIBLE_TO_OTHER_USERS'
+
+# Utile notamment car l'applcation SIMM basée sur Cyclos et non Dolibarr :
+# peut-être qu'on voudra avoir accès à ces informations..
+global_default_config['addressConfiguration'] = {
+    'enabledAddressFields': ['ADDRESS_LINE_1','CITY']
+}
 r = requests.post(
     global_web_services + 'configuration/save',
     headers=headers,
     json=global_default_config
 )
 check_request_status(r)
+
 # Puis on liste les config de canaux pour retrouver l'id de la config
 # du canal "Web services".
 r = requests.get(
@@ -202,7 +251,10 @@ check_request_status(r)
 for channel_config in r.json()['result']:
     if channel_config['channel']['internalName'] == 'webServices':
         ws_config_id = channel_config['id']
-# Enfin on charge la config du canal "Web services", pour pouvoir la
+    if channel_config['channel']['internalName'] == 'main':
+        main_config_id = channel_config['id']
+
+# Ensuite on charge la config du canal "Web services", pour pouvoir la
 # modifier.
 r = requests.get(
     global_web_services + 'channelConfiguration/load/' + ws_config_id,
@@ -210,7 +262,11 @@ r = requests.get(
 )
 check_request_status(r)
 ws_config = r.json()['result']
-ws_config['userAccess'] = 'DEFAULT_ENABLED'
+ws_config['userAccess'] = 'ENFORCED_ENABLED'
+ws_config['sessionTimeout'] = {
+        'amount': int(SESSION_TIMEOUT/60) + 1,
+        'field': 'MINUTES'
+}
 r = requests.post(
     global_web_services + 'channelConfiguration/save',
     headers=headers,
@@ -218,9 +274,28 @@ r = requests.post(
 )
 check_request_status(r)
 
+# Enfin, on charge la config du canal "main web", pour pouvoir la modifier : accès par défaut avec possibilité de modification.
+# Pourquoi ? On souhaite que les pros n'aient pas accès à Cyclos via le canal main web
+r = requests.get(
+        global_web_services + 'channelConfiguration/load/' + main_config_id,
+        headers=headers
+)
+check_request_status(r)
+main_config = r.json()['result']
+main_config['userAccess'] = 'DEFAULT_ENABLED'
+main_config['sessionTimeout'] = {
+        'amount': 5,
+        'field': 'MINUTES'
+}
+r = requests.post(
+        global_web_services + 'channelConfiguration/save',
+        headers=headers,
+        json=main_config
+)
+check_request_status(r)
 
 ########################################################################
-# Création du réseau NETWORK_NAME.
+# Création du réseau NETWORK_INTERNAL_NAME.
 #
 # C'est le seul réseau, tout le reste du paramétrage va être fait
 # dans ce réseau. On ne crée pas d'administrateur spécifique pour ce
@@ -233,7 +308,7 @@ def create_network(name, internal_name):
     r = requests.post(global_web_services + 'network/save',
                       headers=headers,
                       json={
-                          'name': NETWORK_NAME,
+                          'name': NETWORK_INTERNAL_NAME,
                           'internalName': get_internal_name(name),
                           'enabled': True
                       })
@@ -243,7 +318,7 @@ def create_network(name, internal_name):
     return network_id
 
 ID_RESEAU = create_network(
-    name=NETWORK_NAME,
+    name=NETWORK_INTERNAL_NAME,
     internal_name=NETWORK_INTERNAL_NAME,
 )
 
@@ -269,14 +344,13 @@ def create_currency(name, symbol):
     return currency_id
 
 ID_DEVISE_LOCAL_CURRENCY = create_currency(
-    name=LOCAL_CURRENCY_NAME,
+    name=LOCAL_CURRENCY_INTERNAL_NAME,
     symbol=LOCAL_CURRENCY_SYMBOL,
 )
 ID_DEVISE_EURO = create_currency(
     name='Euro',
     symbol='€',
 )
-
 
 ########################################################################
 # Création du token "Carte NFC".
@@ -735,7 +809,7 @@ def create_user_account_type(name, currency_id):
 
 # Comptes système pour l'mlc billet
 ID_COMPTE_DE_DEBIT_CURRENCY_BILLET = create_system_account_type(
-    name='Compte de débit ' + LOCAL_CURRENCY_NAME +  ' billet',
+    name='Compte de débit ' + LOCAL_CURRENCY_INTERNAL_NAME +  ' billet',
     currency_id=ID_DEVISE_LOCAL_CURRENCY,
     limit_type='UNLIMITED',
 )
@@ -776,11 +850,11 @@ ID_CAISSE_EURO_BDC = create_user_account_type(
     currency_id=ID_DEVISE_EURO,
 )
 ID_CAISSE_CURRENCY_BDC = create_user_account_type(
-    name='Caisse '+ LOCAL_CURRENCY_NAME +' BDC',
+    name='Caisse '+ LOCAL_CURRENCY_INTERNAL_NAME +' BDC',
     currency_id=ID_DEVISE_LOCAL_CURRENCY,
 )
 ID_RETOURS_CURRENCY_BDC = create_user_account_type(
-    name="Retours d'" + LOCAL_CURRENCY_NAME + " BDC",
+    name="Retours d'" + LOCAL_CURRENCY_INTERNAL_NAME + " BDC",
     currency_id=ID_DEVISE_LOCAL_CURRENCY,
 )
 
@@ -798,7 +872,7 @@ ID_COMPTE_DEDIE = create_user_account_type(
 
 # Comptes pour la monnaie locale numérique
 ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE = create_system_account_type(
-    name='Compte de débit ' + LOCAL_CURRENCY_NAME + ' numérique',
+    name='Compte de débit ' + LOCAL_CURRENCY_INTERNAL_NAME + ' numérique',
     currency_id=ID_DEVISE_LOCAL_CURRENCY,
     limit_type='UNLIMITED',
 )
@@ -948,6 +1022,8 @@ def create_payment_transfer_type(name, direction, from_account_type_id,
                                  status_flows=[], initial_statuses=[],
                                  channels=[ID_CANAL_MAIN_WEB, ID_CANAL_WEB_SERVICES],
                                  principal_types=[],
+                                 allows_recurring_payments=False,
+                                 allows_scheduled_payments=False,
                                  description_availability="OPTIONAL"):
     logger.info('Création du type de paiement "%s"...', name)
     r = requests.post(network_web_services + 'transferType/save',
@@ -965,6 +1041,9 @@ def create_payment_transfer_type(name, direction, from_account_type_id,
                           'maxChargebackTime': {'amount': '2', 'field': 'MONTHS'},
                           'channels': channels,
                           'principalTypes': principal_types,
+                          'allowsRecurringPayments': allows_recurring_payments,
+                          'allowsScheduledPayments': allows_scheduled_payments,
+                          'maxInstallments': 1,
                           'descriptionAvailability': description_availability
                       })
     check_request_status(r)
@@ -1093,7 +1172,7 @@ ID_TYPE_PAIEMENT_SORTIE_STOCK_BDC = create_payment_transfer_type(
 # "A rapprocher" et seront passées dans l'état "Rapproché" lorsque leur
 # entrée dans la Caisse mlc d'E.M. sera validée.
 ID_TYPE_PAIEMENT_SORTIE_CAISSE_CURRENCY_BDC = create_payment_transfer_type(
-    name='Sortie caisse ' + LOCAL_CURRENCY_NAME + ' BDC',
+    name='Sortie caisse ' + LOCAL_CURRENCY_INTERNAL_NAME + ' BDC',
     direction='USER_TO_SYSTEM',
     from_account_type_id=ID_CAISSE_CURRENCY_BDC,
     to_account_type_id=ID_COMPTE_DES_BILLETS_EN_CIRCULATION,
@@ -1108,7 +1187,7 @@ ID_TYPE_PAIEMENT_SORTIE_CAISSE_CURRENCY_BDC = create_payment_transfer_type(
     ],
 )
 ID_TYPE_PAIEMENT_SORTIE_RETOURS_CURRENCY_BDC = create_payment_transfer_type(
-    name='Sortie retours ' + LOCAL_CURRENCY_NAME + ' BDC',
+    name='Sortie retours ' + LOCAL_CURRENCY_INTERNAL_NAME + ' BDC',
     direction='USER_TO_SYSTEM',
     from_account_type_id=ID_RETOURS_CURRENCY_BDC,
     to_account_type_id=ID_COMPTE_DE_TRANSIT,
@@ -1167,13 +1246,13 @@ ID_TYPE_PAIEMENT_CHANGE_BILLETS_VERSEMENT_DES_EUROS = create_payment_transfer_ty
     ],
 )
 ID_TYPE_PAIEMENT_CHANGE_BILLETS_VERSEMENT_DES_MLC = create_generated_transfer_type(
-    name='Change billets - Versement des ' + LOCAL_CURRENCY_NAME,
+    name='Change billets - Versement des ' + LOCAL_CURRENCY_INTERNAL_NAME,
     direction='USER_TO_SYSTEM',
     from_account_type_id=ID_STOCK_DE_BILLETS_BDC,
     to_account_type_id=ID_COMPTE_DES_BILLETS_EN_CIRCULATION,
 )
 create_transfer_fee(
-    name='Change billets - Versement des ' + LOCAL_CURRENCY_NAME,
+    name='Change billets - Versement des ' + LOCAL_CURRENCY_INTERNAL_NAME,
     original_transfer_type=ID_TYPE_PAIEMENT_CHANGE_BILLETS_VERSEMENT_DES_EUROS,
     generated_transfer_type=ID_TYPE_PAIEMENT_CHANGE_BILLETS_VERSEMENT_DES_MLC,
     other_currency=True,
@@ -1249,7 +1328,7 @@ ID_TYPE_PAIEMENT_VENTE_EN_EURO = create_payment_transfer_type(
     ],
 )
 ID_TYPE_PAIEMENT_VENTE_EN_MLC = create_payment_transfer_type(
-    name='Vente en ' + LOCAL_CURRENCY_NAME,
+    name='Vente en ' + LOCAL_CURRENCY_INTERNAL_NAME,
     direction='SYSTEM_TO_USER',
     from_account_type_id=ID_COMPTE_DES_BILLETS_EN_CIRCULATION,
     to_account_type_id=ID_CAISSE_CURRENCY_BDC,
@@ -1445,7 +1524,7 @@ ID_TYPE_PAIEMENT_CHANGE_NUMERIQUE_EN_LIGNE_VERSEMENT_DES_EUROS = create_payment_
     ],
 )
 ID_TYPE_PAIEMENT_CHANGE_NUMERIQUE_EN_LIGNE_VERSEMENT_DES_MLC = create_payment_transfer_type(
-    name='Change numérique en ligne - Versement des ' + LOCAL_CURRENCY_NAME,
+    name='Change numérique en ligne - Versement des ' + LOCAL_CURRENCY_INTERNAL_NAME,
     direction='SYSTEM_TO_USER',
     from_account_type_id=ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE,
     to_account_type_id=ID_COMPTE_ADHERENT,
@@ -1582,6 +1661,8 @@ ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT = create_payment_transfer_type(
     direction='USER_TO_USER',
     from_account_type_id=ID_COMPTE_ADHERENT,
     to_account_type_id=ID_COMPTE_ADHERENT,
+    allows_recurring_payments=True,
+    allows_scheduled_payments=True
 )
 ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE = create_payment_transfer_type(
     name='Paiement par carte',
@@ -1598,13 +1679,13 @@ ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE = create_payment_transfer_type(
 
 # Types de paiement pour des régularisations entre caisses des BDC.
 ID_TYPE_PAIEMENT_DE_STOCK_DE_BILLETS_BDC_VERS_RETOURS_MLC_BDC = create_payment_transfer_type(
-    name="De Stock de billets BDC vers Retours de " + LOCAL_CURRENCY_NAME +" BDC",
+    name="De Stock de billets BDC vers Retours de " + LOCAL_CURRENCY_INTERNAL_NAME +" BDC",
     direction='USER_TO_SELF',
     from_account_type_id=ID_STOCK_DE_BILLETS_BDC,
     to_account_type_id=ID_RETOURS_CURRENCY_BDC,
 )
 ID_TYPE_PAIEMENT_DE_RETOURS_MLC_BDC_VERS_STOCK_DE_BILLETS_BDC = create_payment_transfer_type(
-    name="De Retours des " + LOCAL_CURRENCY_NAME + " BDC vers Stock de billets BDC",
+    name="De Retours des " + LOCAL_CURRENCY_INTERNAL_NAME + " BDC vers Stock de billets BDC",
     direction='USER_TO_SELF',
     from_account_type_id=ID_RETOURS_CURRENCY_BDC,
     to_account_type_id=ID_STOCK_DE_BILLETS_BDC,
@@ -1784,6 +1865,8 @@ def create_member_product(name,
         key = field['profileField']
         try:
             if key in other_users_profile_fields:
+                field['userList'] = True
+                field['userFilter'] = True
                 field['visible'] = True
                 field['userKeywords'] = other_users_profile_fields[key]
         except TypeError:
@@ -1799,6 +1882,7 @@ def create_member_product(name,
     for password_action in product['passwordActions']:
         if password_action['passwordType']['internalName'] in password_actions:
             password_action['change'] = True
+            password_action['atRegistration'] = True
     for access_client in product['myAccessClients']:
         if access_client['accessClientType']['id'] in my_access_clients:
             access_client['enable'] = True
@@ -1808,9 +1892,11 @@ def create_member_product(name,
             token_type['enable'] = True
             token_type['block'] = True
             token_type['unblock'] = True
+    product['maxAddresses'] = 1
     product['systemPayments'] = system_payments
     product['userPayments'] = user_payments
     product['receivePayments'] = receive_payments
+    product['myScheduledPayments'] = ['VIEW','CANCEL','PROCESS_INSTALLMENT']
     r = requests.post(network_web_services + 'product/save',
                       headers=headers,
                       json=product)
@@ -1854,6 +1940,7 @@ def set_admin_group_permissions(
         disabled_users='NONE',
         removed_users='NONE',
         user_password_actions=[],
+        user_channels_access='NONE',
         user_token_types=[],
         user_access_clients=[],
         access_user_accounts=[],
@@ -1913,6 +2000,8 @@ def set_admin_group_permissions(
             enable = field['id'] in user_profile_fields
         profile_field['visible'] = enable
         profile_field['editable'] = enable
+        profile_field['userList'] = enable
+        profile_field['userKeywords'] = enable
     product['userGroup'] = change_group
     product['userRegistration'] = user_registration
     product['blockedUsersManage'] = blocked_users_manage
@@ -1924,8 +2013,10 @@ def set_admin_group_permissions(
     for password_action in product['userPasswordActions']:
         if password_action['passwordType']['internalName'] in user_password_actions:
             password_action['change'] = True
-            password_action['reset'] = True
-            password_action['unblock'] = True
+            password_action['atRegistration'] = True
+#            password_action['reset'] = True
+#            password_action['unblock'] = True
+    product['userChannelsAccess'] = user_channels_access
     for token_type in product['userTokenTypes']:
         if token_type['tokenType']['id'] in user_token_types:
             token_type['view'] = True
@@ -1948,6 +2039,8 @@ def set_admin_group_permissions(
     product['systemPaymentsAsUser'] = payments_as_user_to_system
     product['selfPaymentsAsUser'] = payments_as_user_to_self
     product['chargebackPaymentsToUser'] = chargeback_of_payments_to_user
+    product['userScheduledPayments'] = ['VIEW','CANCEL','PROCESS_INSTALLMENT']
+
     # Enregistrement du produit modifié
     r = requests.post(network_web_services + 'product/save',
                       headers=headers,
@@ -2055,11 +2148,11 @@ ID_PRODUIT_CAISSE_EURO_BDC = create_member_product(
     user_account_type_id=ID_CAISSE_EURO_BDC,
 )
 ID_PRODUIT_CAISSE_MLC_BDC = create_member_product(
-    name='Caisse '+ LOCAL_CURRENCY_NAME + ' BDC',
+    name='Caisse '+ LOCAL_CURRENCY_INTERNAL_NAME + ' BDC',
     user_account_type_id=ID_CAISSE_CURRENCY_BDC,
 )
 ID_PRODUIT_RETOURS_MLC_BDC = create_member_product(
-    name="Retours des " + LOCAL_CURRENCY_NAME + " BDC",
+    name="Retours des " + LOCAL_CURRENCY_INTERNAL_NAME + " BDC",
     user_account_type_id=ID_RETOURS_CURRENCY_BDC,
 )
 ID_GROUPE_BUREAUX_DE_CHANGE = create_member_group(
@@ -2108,29 +2201,39 @@ ID_GROUPE_COMPTES_DEDIES = create_member_group(
 # définir les permissions (autrement dit pour créer les produits).
 prestataires = 'Adhérents prestataires'
 utilisateurs = 'Adhérents utilisateurs'
+
+# @WARNING : avant c'etait DISABLED, sûrement parce que le jeu de tests utilisateurs 
+# était généré indépendamment de l'environnement (prod / dev / test) --> c'était un FIXME dans init_test_data.py
+# ce problème étant réglé, on peut les autoriser sans crainte par défaut
 ID_GROUPE_ADHERENTS_PRESTATAIRES = create_member_group(
     name=prestataires,
-    initial_user_status='DISABLED',
+    initial_user_status='ACTIVE',
 )
 ID_GROUPE_ADHERENTS_UTILISATEURS = create_member_group(
     name=utilisateurs,
-    initial_user_status='DISABLED',
+    initial_user_status='ACTIVE',
 )
 
 # Permissions pour les prestataires.
+
+#On est plus permissif sur les droits d'accès : login / email / numero de compte... quitte à les enlever après
 ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
     name=prestataires,
     my_profile_fields=[
         'FULL_NAME',
         'LOGIN_NAME',
+        'EMAIL',
         'ACCOUNT_NUMBER',
+        'ADDRESS'
     ],
     accessible_user_groups=[
         ID_GROUPE_ADHERENTS_PRESTATAIRES,
         ID_GROUPE_ADHERENTS_UTILISATEURS,
     ],
     other_users_profile_fields={
-        'FULL_NAME': False,
+        'FULL_NAME': True,
+        'LOGIN_NAME': True,
+        'EMAIL': True,
         'ACCOUNT_NUMBER': True,
     },
     user_account_type_id=ID_COMPTE_ADHERENT,
@@ -2141,7 +2244,7 @@ ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
     ],
     password_actions=[
         'login',
-        'pin',
+#        'pin',
     ],
     my_access_clients=[
         ID_CLIENT_POINT_DE_VENTE_NFC,
@@ -2169,14 +2272,18 @@ ID_PRODUIT_ADHERENTS_UTILISATEURS = create_member_product(
     my_profile_fields=[
         'FULL_NAME',
         'LOGIN_NAME',
+        'EMAIL',
         'ACCOUNT_NUMBER',
+        'ADDRESS'
     ],
     accessible_user_groups=[
         ID_GROUPE_ADHERENTS_PRESTATAIRES,
         ID_GROUPE_ADHERENTS_UTILISATEURS,
     ],
     other_users_profile_fields={
-        'FULL_NAME': False,
+        'FULL_NAME': True,
+        'LOGIN_NAME': True,
+        'EMAIL': True,
         'ACCOUNT_NUMBER': True,
     },
     user_account_type_id=ID_COMPTE_ADHERENT,
@@ -2187,7 +2294,7 @@ ID_PRODUIT_ADHERENTS_UTILISATEURS = create_member_product(
     ],
     password_actions=[
         'login',
-        'pin',
+#        'pin',
     ],
     my_token_types=[
         ID_TOKEN_CARTE_NFC,
@@ -2208,9 +2315,10 @@ ID_PRODUIT_UTILISATEURS_BASIQUES_SANS_COMPTE = create_member_product(
         'FULL_NAME',
         'LOGIN_NAME',
     ],
-    password_actions=[
-        'login',
-    ],
+#@WARNING : y'a-t-il un intérêt de proposer une connexion à des utilisateurs sans compte ?
+#    password_actions=[
+#        'login',
+#    ],
 )
 # Porteurs.
 ID_GROUPE_PORTEURS = create_member_group(
@@ -2242,6 +2350,79 @@ all_user_groups = [
 # Il faut faire ça en dernier car nous avons besoin de tous les objets
 # créés auparavant.
 #
+## Permissions pour le groupe "Administrateurs réseaux":
+def get_group_id(web_services, name, nature):
+    r = requests.post(web_services + 'group/search',
+            headers=headers,
+            json={
+                'name': name,
+                'natures': nature,
+                })
+    check_request_status(r)
+    groups = r.json()['result']['pageItems']
+    for group in groups:
+        if group['name'] == name:
+            return group['id']
+    return None;
+
+ID_GROUPE_NETWORK_ADMINS = get_group_id(
+        network_web_services,
+        'Network administrators' ,
+        'ADMIN_GROUP'
+        )
+
+set_admin_group_permissions(
+        group_id=ID_GROUPE_NETWORK_ADMINS,
+        my_profile_fields=[
+            'FULL_NAME',
+            'LOGIN_NAME',
+            'EMAIL',
+            'ACCOUNT_NUMBER',
+            'ADDRESS',
+            ],
+        password_actions=[
+            'login',
+            ],
+        visible_transaction_fields=[],#all_transaction_fields,
+        transfer_status_flows=[],#all_status_flows,
+        system_accounts=all_system_accounts,
+        system_to_system_payments=[],#all_system_to_system_payments,
+        system_to_user_payments=all_system_to_user_payments,
+        chargeback_of_payments_to_system=all_payments_to_system,
+        accessible_user_groups=[
+            ID_GROUPE_ADHERENTS_PRESTATAIRES,
+            ID_GROUPE_ADHERENTS_UTILISATEURS
+            ], #all_user_groups,
+        accessible_administrator_groups=[
+            ID_GROUPE_NETWORK_ADMINS,
+            ],
+        user_profile_fields=[
+            'FULL_NAME',
+            'LOGIN_NAME',
+            'EMAIL',
+            'ACCOUNT_NUMBER',
+            'ADDRESS',
+            #        ID_CHAMP_PERSO_UTILISATEUR_BDC,
+            ],
+        change_group='MANAGE',
+        user_registration=True,
+        blocked_users_manage=True,
+        disabled_users='MANAGE',
+        removed_users='MANAGE',
+        user_password_actions=[
+            'login',
+#            'pin',
+            ],
+        user_channels_access='MANAGE',
+        user_token_types=[],#all_token_types,
+        user_access_clients=[],#all_access_clients,
+        access_user_accounts=all_user_accounts,
+        payments_as_user_to_user=all_user_to_user_payments,
+        payments_as_user_to_system=all_user_to_system_payments,
+        payments_as_user_to_self=[],#all_user_to_self_payments,
+        chargeback_of_payments_to_user=all_payments_to_user
+)
+
 # Permissions pour le groupe "Gestion interne":
 set_admin_group_permissions(
     group_id=ID_GROUPE_GESTION_INTERNE,
@@ -2261,6 +2442,7 @@ set_admin_group_permissions(
     accessible_user_groups=all_user_groups,
     accessible_administrator_groups=[
         ID_GROUPE_OPERATEURS_BDC,
+        ID_GROUPE_GESTION_INTERNE,
     ],
     user_profile_fields=[
         'FULL_NAME',
@@ -2275,7 +2457,7 @@ set_admin_group_permissions(
     removed_users='MANAGE',
     user_password_actions=[
         'login',
-        'pin',
+#        'pin',
     ],
     user_token_types=all_token_types,
     user_access_clients=all_access_clients,
@@ -2396,16 +2578,25 @@ set_admin_group_permissions(
 ########################################################################
 # Création des utilisateurs pour les comptes dédiés.
 #
-def create_user(group, name, login):
+def create_user(group, name, login, password=None):
     logger.info('Création de l\'utilisateur "%s"...', name)
+    json_query={
+            'group': group,
+            'name': name,
+            'username': login,
+            'skipActivationEmail': True,
+            }
+    if password != None:
+        json_query[0]['passwords'] = {
+                'assign': True ,
+                'type': 'login',
+                'value': password,
+                'confirmationValue': password
+                }
     r = requests.post(network_web_services + 'user/register',
                       headers=headers,
-                      json={
-                          'group': group,
-                          'name': name,
-                          'username': login,
-                          'skipActivationEmail': True,
-                      })
+                      json=json_query
+                      )
     check_request_status(r)
     user_id = r.json()['result']['user']['id']
     logger.debug('user_id = %s', user_id)
@@ -2414,14 +2605,15 @@ def create_user(group, name, login):
 
 create_user(
     group=ID_GROUPE_COMPTES_DEDIES,
-    name='Compte dédié ' + LOCAL_CURRENCY_NAME +' billet',
+    name='Compte dédié ' + LOCAL_CURRENCY_INTERNAL_NAME +' billet',
     login='CD_BILLET',
 )
 create_user(
     group=ID_GROUPE_COMPTES_DEDIES,
-    name='Compte dédié  ' + LOCAL_CURRENCY_NAME +' numérique',
+    name='Compte dédié  ' + LOCAL_CURRENCY_INTERNAL_NAME +' numérique',
     login='CD_NUMERIQUE',
 )
+
 
 
 ########################################################################

@@ -90,7 +90,7 @@ services:
   cyclos-db:
     image: cyclos/db
     volumes:
-      - ./etc/cyclos/dump/cyclos-dump-minimal.sql:/docker-entrypoint-initdb.d/cyclos.sql
+      - ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql
       - ./data/cyclos/postgresql:/var/lib/postgresql/data
     environment:
     - POSTGRES_DB=cyclos
