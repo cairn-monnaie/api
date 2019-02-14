@@ -272,7 +272,7 @@ with open("cyclos_constants.yml", 'r') as cyclos_stream:
 
 # Impression billets eusko
 logger.info('Impression billets eusko...')
-logger.debug(str(CYCLOS_CONSTANTS['payment_types']['impression_de_billets_d_eusko']) + "\r\n" +
+logger.debug(str(CYCLOS_CONSTANTS['payment_types']['impression_de_billets_eusko']) + "\r\n" +
              str(CYCLOS_CONSTANTS['currencies']['eusko']) + "\r\n" +
              str(CYCLOS_CONSTANTS['account_types']['compte_de_debit_eusko_billet']) + "\r\n" +
              str(CYCLOS_CONSTANTS['account_types']['stock_de_billets']))
@@ -280,7 +280,7 @@ logger.debug(str(CYCLOS_CONSTANTS['payment_types']['impression_de_billets_d_eusk
 r = requests.post(eusko_web_services + 'payment/perform',
                   headers={'Authorization': 'Basic {}'.format(base64.standard_b64encode(b'demo:demo').decode('utf-8'))},  # noqa
                   json={
-                      'type': CYCLOS_CONSTANTS['payment_types']['impression_de_billets_d_eusko'],
+                      'type': CYCLOS_CONSTANTS['payment_types']['impression_de_billets_eusko'],
                       'amount': 126500,
                       'currency': CYCLOS_CONSTANTS['currencies']['eusko'],
                       'from': 'SYSTEM',
