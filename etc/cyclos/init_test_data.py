@@ -264,7 +264,7 @@ for login, name in porteurs.items():
 
 logger.info('Récupération des constantes depuis le YAML...')
 CYCLOS_CONSTANTS = None
-with open("/cyclos/cyclos_constants.yml", 'r') as cyclos_stream:
+with open("cyclos_constants.yml", 'r') as cyclos_stream:
     try:
         CYCLOS_CONSTANTS = yaml.load(cyclos_stream)
     except yaml.YAMLError as exc:

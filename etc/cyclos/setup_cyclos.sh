@@ -4,19 +4,20 @@ set -e
 
 WORKDIR=$(pwd)
 
-cd /cyclos
+#cd /cyclos
+cd "$(dirname "$0")"
 
-PASS=`echo -n admin:admin | base64`
+PASS=`echo -n admin:XqD3G8TpIu | base64`
 
-until [ `curl --silent --write-out '%{response_code}' -o /dev/null http://cyclos-app:8080/global/` -eq 200 ];
+until [ `curl --silent --write-out '%{response_code}' -o /dev/null http://localhost:8080/global/` -eq 200 ];
 do
   echo '--- waiting for Cyclos to be fully up (10 seconds)'
   sleep 10
 done
 
 if [ ! -f ./cyclos_constants.yml ]; then
-    python setup.py http://cyclos-app:8080/ $PASS
-    python init_test_data.py http://cyclos-app:8080/ $PASS
+    python setup.py http://localhost:8080/ $PASS
+    python init_test_data.py http://localhost:8080/ $PASS
 fi
 
 cd ${WORKDIR}

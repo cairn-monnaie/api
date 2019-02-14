@@ -210,7 +210,7 @@ CEL_PUBLIC_URL = os.environ.get('CEL_PUBLIC_URL')
 
 # APIs URLs
 DOLIBARR_URL = 'http://dolibarr-app/api/index.php'
-CYCLOS_URL = 'http://cyclos-app:8080/eusko/web-rpc'
+CYCLOS_URL = 'http://109.238.6.54/eusko/web-rpc'
 
 # Euskal Moneta internal settings
 DATE_COTISATION_ANTICIPEE = '01/11'  # 1er Novembre

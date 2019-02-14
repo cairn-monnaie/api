@@ -23,7 +23,9 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get install -y libfreetype6-dev wget xvfb wkhtmltopdf && \
     rm -rf /var/lib/apt/lists/*
 
-ENTRYPOINT ["/cyclos/setup_cyclos.sh"]
+#RUN python manage.py migrate
+
+#ENTRYPOINT ["/cyclos/setup_cyclos.sh"]
 
 EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

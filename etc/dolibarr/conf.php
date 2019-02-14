@@ -178,7 +178,7 @@ $dolibarr_main_authentication='cyclos4';
 // Uncomment them if dolibarr_main_authentication = 'cyclos4'
 //
 // URL of the Cyclos 4 network.
-$dolibarr_main_auth_cyclos4_network_url='http://cyclos-app:8080/eusko/';
+$dolibarr_main_auth_cyclos4_network_url='http://109.238.6.54/eusko/';
 
 // Parameters used to setup LDAP authentication.
 // Uncomment them if dolibarr_main_authentication = 'ldap'
