@@ -23,10 +23,15 @@ def check_request_status(r):
         r.raise_for_status()
 
 # Ensemble des constantes nécessaires au fonctionnement du script.
+ENV = os.environ.get('ENV')
+
 LOCAL_CURRENCY_INTERNAL_NAME = os.environ.get('CURRENCY_SLUG')
 NETWORK_INTERNAL_NAME = LOCAL_CURRENCY_INTERNAL_NAME
+
+if ENV != 'prod':
+    NETWORK_INTERNAL_NAME = ENV + LOCAL_CURRENCY_INTERNAL_NAME
+
 LOCAL_CURRENCY_SYMBOL = os.environ.get('CURRENCY_SYMBOL')
-ENV = os.environ.get('ENV')
 
 # Arguments à fournir dans la ligne de commande
 parser = argparse.ArgumentParser()
@@ -213,6 +218,8 @@ if ENV != 'prod':
         ['barbare_cohen', 'le Barbare Cohen'],
         ['lacreuse_desiderata', 'Lacreuse Desiderata'],
         ['comblant_michel', 'Comblant Michel'],
+        ['nico_faus_perso', 'Le Caméléon Nicolas'],
+        ['benoit_perso', 'Le Rigolo Benoît'],
     ]
 
     adherents_prestataires = [
@@ -310,7 +317,7 @@ if ENV != 'prod':
 
     logger.info('Récupération des constantes depuis le YAML...')
     CYCLOS_CONSTANTS = None
-    with open("/cyclos/cyclos_constants.yml", 'r') as cyclos_stream:
+    with open("/cyclos/cyclos_constants_"+ENV+".yml", 'r') as cyclos_stream:
         try:
             CYCLOS_CONSTANTS = yaml.load(cyclos_stream)
         except yaml.YAMLError as exc:
@@ -396,7 +403,7 @@ if ENV != 'prod':
                  str(CYCLOS_CONSTANTS['account_types']['compte_de_debit_mlc_numerique']) + "\r\n" +
                  str(CYCLOS_CONSTANTS['account_types']['compte_d_adherent']))
 
-    initial_credit = 1000
+    initial_credit = 2000
 
     for pro in adherents_prestataires:
         if pro[2] == 'Grenoble':

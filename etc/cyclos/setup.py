@@ -33,7 +33,12 @@ def get_internal_name(name):
 # Ensemble des constantes nécessaires au fonctionnement du script
 ENV = os.environ.get('ENV')
 LOCAL_CURRENCY_INTERNAL_NAME = os.environ.get('CURRENCY_SLUG')
+
 NETWORK_INTERNAL_NAME = LOCAL_CURRENCY_INTERNAL_NAME
+
+if ENV != 'prod':
+    NETWORK_INTERNAL_NAME = ENV + LOCAL_CURRENCY_INTERNAL_NAME
+
 LOCAL_CURRENCY_SYMBOL = os.environ.get('CURRENCY_SYMBOL')
 SESSION_TIMEOUT = int(os.environ.get('SESSION_TIMEOUT'))
 MAX_LENGTH_PWD = os.environ.get('MAX_LENGTH_PWD')
@@ -415,9 +420,65 @@ ID_CLIENT_POINT_DE_VENTE_NFC = create_access_client(
     permission='RECEIVE_PAYMENT',
 )
 
+#@WARNING : utile uniquement pour le Cairn dans le cadre du paiement SMS
+ID_CLIENT_SMS = create_access_client(
+    name='Client SMS',
+    plural_name='Clients SMS',
+    maximum_per_user=1,
+    permission='RECEIVE_AND_MAKE_PAYMENT',
+)
+
 all_access_clients = [
     ID_CLIENT_POINT_DE_VENTE_NFC,
+    ID_CLIENT_SMS
 ]
+
+########################################################################
+## Modification du canal web services à l'echelle réseau pour autoriser
+## la connexion via le client SMS 
+## D'abord on récupère l'id de la config par défaut.
+#logger.info('Récupération de l\'id de la configuration par défaut...')
+#r = requests.get(network_web_services + 'configuration/getDefault',
+#                 headers=headers)
+#check_request_status(r)
+#mlc_default_config_id = r.json()['result']['id']
+#
+## Puis on liste les config de canaux pour retrouver l'id de la config
+## du canal "Web services".
+#r = requests.get(
+#    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
+#    headers=headers
+#)
+#check_request_status(r)
+#for channel_config in r.json()['result']:
+#    if channel_config['channel']['internalName'] == 'webServices':
+#        ws_config_id = channel_config['id']
+#
+## Ensuite on charge la config du canal "Web services", pour pouvoir la
+## modifier.
+#r = requests.get(
+#    global_web_services + 'channelConfiguration/load/' + ws_config_id,
+#    headers=headers
+#)
+#check_request_status(r)
+#ws_config = r.json()['result']
+#
+#logger.info('Récupération de la liste des types de mots de passe...')
+#r = requests.get(network_web_services + 'passwordType/list', headers=headers)
+#check_request_status(r)
+#password_types = r.json()['result']
+#for password_type in password_types:
+#    if password_type['internalName'] == 'login':
+#        ID_PASSWORD_LOGIN = password_type['id']
+#logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
+#
+#ws_config['principalTypes'] = [ID_CLIENT_SMS,ID_PASSWORD_LOGIN ]
+#r = requests.post(
+#    global_web_services + 'channelConfiguration/save',
+#    headers=headers,
+#    json=ws_config
+#)
+#check_request_status(r)
 
 
 ########################################################################
@@ -1664,6 +1725,16 @@ ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT = create_payment_transfer_type(
     allows_recurring_payments=True,
     allows_scheduled_payments=True
 )
+ID_TYPE_PAIEMENT_PAIEMENT_PAR_SMS = create_payment_transfer_type(
+    name='Paiement par SMS',
+    direction='USER_TO_USER',
+    from_account_type_id=ID_COMPTE_ADHERENT,
+    to_account_type_id=ID_COMPTE_ADHERENT,
+    principal_types=[
+        ID_CLIENT_SMS,
+    ],
+)
+
 ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE = create_payment_transfer_type(
     name='Paiement par carte',
     direction='USER_TO_USER',
@@ -1887,6 +1958,11 @@ def create_member_product(name,
         if access_client['accessClientType']['id'] in my_access_clients:
             access_client['enable'] = True
             access_client['view'] = True
+            access_client['block'] = True
+            access_client['unblock'] = True
+            access_client['manage'] = True
+            access_client['activate'] = True
+            access_client['unassign'] = True
     for token_type in product['myTokenTypes']:
         if token_type['tokenType']['id'] in my_token_types:
             token_type['enable'] = True
@@ -2248,6 +2324,7 @@ ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
     ],
     my_access_clients=[
         ID_CLIENT_POINT_DE_VENTE_NFC,
+        ID_CLIENT_SMS,
     ],
     my_token_types=[
         ID_TOKEN_CARTE_NFC,
@@ -2258,6 +2335,7 @@ ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
     user_payments=[
         ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT,
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
+        ID_TYPE_PAIEMENT_PAIEMENT_PAR_SMS,
     ],
     receive_payments=[
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
@@ -2296,12 +2374,16 @@ ID_PRODUIT_ADHERENTS_UTILISATEURS = create_member_product(
         'login',
 #        'pin',
     ],
+    my_access_clients=[
+        ID_CLIENT_SMS,
+    ],
     my_token_types=[
         ID_TOKEN_CARTE_NFC,
     ],
     user_payments=[
         ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT,
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
+        ID_TYPE_PAIEMENT_PAIEMENT_PAR_SMS,
     ],
 )
 assign_product_to_group(ID_PRODUIT_ADHERENTS_UTILISATEURS,
@@ -2415,7 +2497,7 @@ set_admin_group_permissions(
             ],
         user_channels_access='MANAGE',
         user_token_types=[],#all_token_types,
-        user_access_clients=[],#all_access_clients,
+        user_access_clients=all_access_clients,
         access_user_accounts=all_user_accounts,
         payments_as_user_to_user=all_user_to_user_payments,
         payments_as_user_to_system=all_user_to_system_payments,
@@ -2628,7 +2710,7 @@ for passwordType in r.json()['result']:
 # On écrit dans un fichier toutes les constantes nécessaires à l'API,
 # après les avoir triées.
 logger.debug('Constantes :\n%s', constants_by_category)
-constants_file = open('cyclos_constants.yml', 'w')
+constants_file = open('cyclos_constants_' + ENV +'.yml', 'w')
 for category in sorted(constants_by_category.keys()):
     constants_file.write(category + ':\n')
     constants = constants_by_category[category]

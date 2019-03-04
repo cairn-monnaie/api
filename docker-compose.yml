@@ -17,7 +17,7 @@ services:
     environment:
       - CURRENCY_SLUG=cairn
       - CURRENCY_SYMBOL=CRN
-      - ENV=dev
+      - ENV=test
       - SESSION_TIMEOUT=1500
       - MIN_LENGTH_PWD=4
       - MAX_LENGTH_PWD=25 
@@ -26,7 +26,7 @@ services:
       - DOLIBARR_PUBLIC_URL=http://localhost:8080
       - BDC_PUBLIC_URL=http://localhost:8001
       - GI_PUBLIC_URL=http://localhost:8002
-      - CEL_PUBLIC_URL=http://localhost:8003
+      - CEL_PUBLIC_URL=http://front:8000
       - EMAIL_NOTIFICATION_GESTION=gestion@euskalmoneta.org
       - RAVEN_CONFIG_DSN=http://46498c24303d4b27828e5e47ce927818:6177efcf6d1d47508f1c22332c8dddaf@sentry:9000/2
     depends_on:

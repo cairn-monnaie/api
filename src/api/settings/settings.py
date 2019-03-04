@@ -15,7 +15,8 @@ import os
 import yaml  # PyYAML
 
 CYCLOS_CONSTANTS = None
-with open("/cyclos/cyclos_constants.yml", 'r') as cyclos_stream:
+ENV = os.environ.get('ENV')
+with open("/cyclos/cyclos_constants_"+ENV+".yml", 'r') as cyclos_stream:
     try:
         CYCLOS_CONSTANTS = yaml.load(cyclos_stream)
     except yaml.YAMLError as exc:
@@ -208,9 +209,12 @@ GI_PUBLIC_URL = os.environ.get('GI_PUBLIC_URL')
 CEL_PUBLIC_URL = os.environ.get('CEL_PUBLIC_URL')
 CURRENCY_SLUG = os.environ.get('CURRENCY_SLUG')
 
+if ENV != 'prod':
+    CURRENCY_SLUG = ENV + CURRENCY_SLUG
 # APIs URLs
 DOLIBARR_URL = 'http://dolibarr-app/api/index.php'
 CYCLOS_URL = 'http://cyclos-app:8080/' + CURRENCY_SLUG + '/web-rpc'
+
 
 # Association internal settings
 DATE_COTISATION_ANTICIPEE = '01/11'  # 1er Novembre
