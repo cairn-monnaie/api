@@ -1,5 +1,60 @@
-# Euskalmoneta
+# Cairn
 
+## Télécharger les images docker
+
+```
+sudo docker-compose build
+```
+## Prérequis
+Se placer sur la branche cairn du dépôt api
+
+## Restaurer la BDD Cyclos à partir du dump
+
+Le fichier dump contenu dans le dossier etc/cyclos/dump est valable pour la version 4.11.2 de Cyclos. Il est donc nécessaire d'utiliser, dans le fichier docker-compose.yml, l'image 4.11.2 de Cyclos.
+
+```
+docker-compose up -d cyclos-db
+```
+
+Ensuite, on vérifie que la restauration de la BDD se fait : 
+```
+docker-compose logs -f cyclos-db
+```
+
+Une fois la restauration complétée, on lance les autres services 
+Si, dans le docker-compose, on a ENV=dev et CURRENCY\_SLUG=cairn, le réseau cyclos automatiquement généré aura pour  nom et  nom interne 'devcairn'. L'URL pour accéder à ce réseau dans cyclos sera donc localhost:1234/devcairn
+De plus, si ENV != prod, le script init\_test\_data.sql est lancé et génère des données automatiques : des utilisateurs prestataires/particuliers, des administateurs réseaux, puis des paiements.
+```
+docker-compose up -d cyclos-app
+docker-compose up -d api
+```
+A la fin, de la création de ces 3 services, on a la BDD Cyclos remplie avec des données, ainsi qu'un fichier etc/cyclos/cyclos\_constants\_dev.yml contenant toutes les constantes Cyclos.
+
+## Et si on veut recréer Cyclos à partir de 0
+``` 
+sudo rm -rf data/cyclos
+sudo rm etc/cyclos/cyclos_constants_dev.yml
+sudo docker-compose stop
+sudo docker-compose rm
+```
+Puis on reprend depuis le début du README.
+
+## Install de l'application CEL
+L'application CEL, à l'initialisation, a besoin que Cyclos contienne un réseau et un administrateur réseau.
+Le fichier app/config/parameters.yml doit avoir des valeurs cohérentes avec le dépôt api : le nom de la monnaie doit être 'cairn' et l'environnement doit être 'dev'.
+
+Cette commande, dans un environnement de dev, va créer une base de données vide, créer le schéma de BDD à partir des migrations et, finalement, créer un ROLE\_SUPER\_ADMIN avec les données de l'admin réseau Cyclos par défaut : (login = admin\_network et pwd = @@bbccdd )
+```
+sudo docker-compose exec engine ./build-setup.sh dev admin:admin
+```
+
+Ensuite, on génère des données Symfony à partir des données Cyclos, en s'identifiant avec le login/pwd de l'admin qu'on vient de créer
+```
+sudo docker-compose exec engine php bin/console cairn.user:generate-database --env=dev admin_network @@bbccdd
+```
+Cette commande n'est pas reproduisible sur n'importe quel réseau Cyclos. Elle a été faite, dans un premier temps, pour les besoins du Cairn. Elle permet d'avoir une variété de données permettant de tester plein de cas différents. Il y a donc un besoin de maîtrise du script de génération de données Cyclos pour adapter celui des données Symfony.
+
+Une fois que c'est terminé, c'est ok.
 ## Applications à développer
 
 - Front BDC: Bureau de change
