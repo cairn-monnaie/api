@@ -28,6 +28,12 @@ De plus, si ENV != prod, le script init\_test\_data.sql est lancé et génère d
 docker-compose up -d cyclos-app
 docker-compose up -d api
 ```
+
+On peut contrôler la génération de la configuration Cyclos puis des données : 
+```
+docker-compose logs -f api
+```
+
 A la fin, de la création de ces 3 services, on a la BDD Cyclos remplie avec des données, ainsi qu'un fichier etc/cyclos/cyclos\_constants\_dev.yml contenant toutes les constantes Cyclos.
 
 ## Et si on veut recréer Cyclos à partir de 0
@@ -40,21 +46,25 @@ sudo docker-compose rm
 Puis on reprend depuis le début du README.
 
 ## Install de l'application CEL
-L'application CEL, à l'initialisation, a besoin que Cyclos contienne un réseau et un administrateur réseau.
-Le fichier app/config/parameters.yml doit avoir des valeurs cohérentes avec le dépôt api : le nom de la monnaie doit être 'cairn' et l'environnement doit être 'dev'.
+La structure actuelle des conteneurs dans les différents dépôts est la plus cohérente. En effet, l'API est le point central de fonctionnement des applications BDC, GI et CEL. Il est donc logique que les conteneurs Cyclos soient dans ce dépôt.
+C'est donc, seulement une fois que les services du dépôt API sont correctement installés qu'on passe à l'installation des services CEL.
 
-Cette commande, dans un environnement de dev, va créer une base de données vide, créer le schéma de BDD à partir des migrations et, finalement, créer un ROLE\_SUPER\_ADMIN avec les données de l'admin réseau Cyclos par défaut : (login = admin\_network et pwd = @@bbccdd )
+L'application CEL, à l'initialisation, a besoin que Cyclos contienne un réseau et un administrateur réseau.
+Le fichier app/config/parameters.yml doit avoir des valeurs cohérentes avec le paramétrage des services API : le nom de la monnaie doit être 'cairn' et l'environnement doit être 'dev'.
+
 ```
 sudo docker-compose exec engine ./build-setup.sh dev admin:admin
 ```
+Cette commande, dans un environnement de dev, va créer une base de données vide, créer le schéma de BDD à partir des migrations et, finalement, créer un ROLE\_SUPER\_ADMIN avec les données de l'admin réseau Cyclos par défaut : (login = admin\_network et pwd = @@bbccdd )
 
 Ensuite, on génère des données Symfony à partir des données Cyclos, en s'identifiant avec le login/pwd de l'admin qu'on vient de créer
 ```
 sudo docker-compose exec engine php bin/console cairn.user:generate-database --env=dev admin_network @@bbccdd
 ```
-Cette commande n'est pas reproduisible sur n'importe quel réseau Cyclos. Elle a été faite, dans un premier temps, pour les besoins du Cairn. Elle permet d'avoir une variété de données permettant de tester plein de cas différents. Il y a donc un besoin de maîtrise du script de génération de données Cyclos pour adapter celui des données Symfony.
+Cette commande, à l'heure actuelle,  ne peut pas être reproduite sur n'importe quel réseau Cyclos contenant n'importe quel jeu de données. Elle a été développée, dans un premier temps, pour les besoins du Cairn. Elle permet d'avoir une variété de données permettant de tester plein de cas différents. Il y a donc un besoin de maîtrise du script de génération de données Cyclos pour adapter celui des données Symfony.
 
-Une fois que c'est terminé, c'est ok.
+Une fois que c'est terminé, on a tout un panel d'utilisateurs avec des données différentes (les messages de log affichés pendant l execution du script permettent d'obtenir des informations, voir les scripts pour compléter)
+
 ## Applications à développer
 
 - Front BDC: Bureau de change
