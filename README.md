@@ -18,6 +18,7 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
 ## Installation 
   
  * **Construire notre image Docker**
+
     Notre image est générée à partir du `Dockerfile` du dossier racine. Il s'agit de celle du service _api_ dans le fichier de configuration docker nommé `docker_compose.yml: services.api.build = .`   
     ```
     sudo docker-compose build
@@ -58,13 +59,14 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
  * **Générer la configuration finale de Cyclos et un jeu de données**
    
     Dans le cadre de la documentation, nous allons nous mettre en situation de développement, c'est-à-dire  `services.api.environment.ENV = dev`. Mais la méthode est la même pour un environnement différent (test / prod)
-    Pour générer la configuration Cyclos et le jeu de données, nous allons créer le dernier conteneur de ce dépôt : le conteneur _api_. Notre Dockerfile contient une instruction qui va être executée au lancement du service :
+    Pour générer la configuration Cyclos et le jeu de données, nous allons créer le dernier conteneur de ce dépôt : le conteneur _api_.  
+    Notre Dockerfile contient une instruction qui va être executée au lancement du service :  
     `ENTRYPOINT ["/cyclos/setup_cyclos.sh"]`  
 
     Le script python `etc/cyclos/setup_cyclos.py` fait trois choses :
       * vérifie que le fichier `etc/cyclos/cyclos_constants_dev.yml` n'existe pas. S'il existe, cela signifie que la configuration Cyclos a déjà été effectuée, et que les scripts de génération n'ont pas à être exécutés.
       * lance le script `setup.py` de génération de la configuration cyclos (voir `etc/cyclos/setup.py` dans le dépôt local). La configuration contient un réseau (au sens de Cyclos), les monnaies, des groupes d'utilisateurs, des produits... 
-      * lance le script `init_test_data` de génération du jeu de données (si et seulement si  `services.api.environment.ENV != prod`) : création d'utilisateurs adhérents particuliers/prestataires, des administrateurs réseaux. Réalisation de changes numériques et de paiements.
+      * lance le script `init_test_data.py` de génération du jeu de données (si et seulement si  `services.api.environment.ENV != prod`) : création d'utilisateurs adhérents particuliers/prestataires, des administrateurs réseaux. Réalisation de changes numériques et de paiements.
 
     _Info_ : Si on a `services.api.environment.ENV=dev` et `services.api.environment.CURRENCY_SLUG=cairn`, le réseau cyclos automatiquement généré aura pour  nom et  nom interne 'devcairn'. L'URL pour accéder à ce réseau dans cyclos sera donc localhost:1234/devcairn.  
     
@@ -98,27 +100,27 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
     
     **WARNING** : Ce script ne fonctionne pas dans le cas général. En effet, les clés étrangères liant les différentes tables sont très nombreuses, ce qui rend difficile la mise en place d'un script générique. Il va dépendre de l'utilisation que chacun a de l'outil. Il fonctionne dans le cadre du script de génération de données actuel.  
 
-    * _Récupérer le nom du conteneur cyclos-db_
+    * _Récupérer le nom du conteneur cyclos-db_  
     On récupère la liste des conteneurs actifs, et on sélectionne le nom correspondant à l'image cyclos/db
     ```
     sudo docker ps
     ```
     Supposons que le nom est : api_cairn_cyclos-db_1
 
-    * _Lancer le script de nettoyage de la base de données_
-    Pour l'instant, je ne suis pas parvenu à lancer le script depuis l'extérieur du conteneur, il faut donc le lancer depuis l'intérieur
-    ```
-    docker cp etc/cyclos/script_clean_database_dev.sql  api_cairn_cyclos-db_1:/
-    docker-compose exec cyclos-db sh
-    psql -U cyclos cyclos < script_clean_database_dev.sql    
-    ```
-    Le 1er 'cyclos' correspond au nom du user (au sens PostGreSQL) ayant les privilèges en écriture/lecture de la base de données nommée 'cyclos' (2ème)
+    * _Lancer le script de nettoyage de la base de données_  
+      Pour l'instant, je ne suis pas parvenu à lancer le script depuis l'extérieur du conteneur, il faut donc le lancer depuis l'intérieur
+      ```
+      docker cp etc/cyclos/script_clean_database_dev.sql  api_cairn_cyclos-db_1:/
+      docker-compose exec cyclos-db sh
+      psql -U cyclos cyclos < script_clean_database_dev.sql    
+      ```
+      Le 1er 'cyclos' correspond au nom du user (au sens PostGreSQL) ayant les privilèges en écriture/lecture de la base de données nommée 'cyclos' (2ème)
 
-    * _Modifier le jeu de données de test et le générer
-    Ensuite, vous pouvez ajouter/modifier des données dans `etc/cyclos/init_test_data.py`, puis
-    ```
-    docker-compose exec api python /cyclos/init_test_data.py http://cyclos-app:8080/ `echo -n admin:admin | base64`
-    ```
+    * _Modifier le jeu de données de test et le générer_   
+      Ensuite, vous pouvez ajouter/modifier des données dans `etc/cyclos/init_test_data.py`, puis
+      ```
+      docker-compose exec api python /cyclos/init_test_data.py http://cyclos-app:8080/ `echo -n admin:admin | base64`
+      ```
 
 ## Applications à développer
 
