@@ -14,7 +14,7 @@ do
   sleep 10
 done
 
-if [ ! -f ./cyclos_constants_test.yml ]; then
+if [ ! -f ./cyclos_constants_dev.yml ]; then
     python setup.py http://cyclos-app:8080/ $PASS
     python init_test_data.py http://cyclos-app:8080/ $PASS
 fi
