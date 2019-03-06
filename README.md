@@ -4,108 +4,118 @@
  * git
  * docker && docker-compose
 
-Se placer sur la branche cairn du dépôt api. Depuis la racine du projet :
-```
-git fetch origin cairn:cairn
-git checkout cairn
-```
+ * Se placer sur la branche cairn du dépôt api. Depuis la racine du projet :  
+   ```
+   git fetch origin cairn:cairn
+   git checkout cairn
+   ```
 
 ## Introduction
 L'application API (ce dépôt) est centrale dans le fonctionnement des différentes applications "clientes" : CEL, BDC, et GI. Il est donc logique que l'organisation des services (au sens de docker) reflète bien cette dépendance des applications dites clientes envers l'API.
-Il est donc logique que les conteneurs Cyclos soient dans ce dépôt, puisque toutes les applications vont en avoir besoin.
-C'est donc, seulement une fois que les services du dépôt API sont correctement installés qu'on passe à l'installation du dépôt CEL.
+Il est donc logique que les conteneurs Cyclos soient dans ce dépôt, puisque toutes les applications vont en avoir besoin.  
+Ainsi, c'est seulement une fois que les services du dépôt API sont correctement installés qu'on passe à l'installation du dépôt CEL.
 
-## Télécharger les images docker
-Seule l'image docker correspondant au fichier _Dockerfile_ sera créée. Il s'agit de celle du service _api_. Les images docker des services Cyclos (app et db) seront créées automatiquement avant le lancement des services puisqu'ils reposent sur une image existante et non sur un Dockerfile
-```
-sudo docker-compose build
-```
+## Installation 
+  
+ * **Construire notre image Docker**
+    Notre image est générée à partir du `Dockerfile` du dossier racine. Il s'agit de celle du service _api_ dans le fichier de configuration docker nommé `docker_compose.yml: services.api.build = .`   
+    ```
+    sudo docker-compose build
+    ```
 
-## Restaurer une configuration initiale de Cyclos à partir d'un dump
+ * **Restaurer une configuration minimale de Cyclos à partir d'un dump existant**
 
-Le fichier _cyclos.sql_ contenu dans le dossier `etc/cyclos/dump` contient un dump valable pour la version 4.11.2 de Cyclos. Il est donc nécessaire de spécifier, dans le fichier docker-compose.yml, que l'image docker à installer en local correspond à la version 4.11.2 (voir le `docker_compose.yml`). Le cas échéant, il faut recréer un fichier dump correspondant à la version souhaitée.  
-Pour plus d'informations sur comment créer, voir [doc docker de l'image cyclos](https://hub.docker.com/r/cyclos/cyclos/)
+    Le fichier `etc/cyclos/dump/cyclos.sql` contient un dump valable pour la version 4.11.2 de Cyclos. Il est donc nécessaire de spécifier, dans le fichier docker-compose.yml, que l'image docker à installer en local correspond à la version 4.11.2 (voir le `docker_compose.yml: services.cyclos-app.image`). Le cas échéant, il faut recréer un fichier dump correspondant à la version de l'image souhaitée.   
+    Pour plus d'informations sur comment créer un dump à partir d'une base de données existante, voir [la page docker de cyclos](https://hub.docker.com/r/cyclos/cyclos/)  
 
-Ce dump, très minimaliste, ne contient que : 
- * les informations concernant la licence utilisée
- * un administrateur global d'identifiants admin:admin
- * l'autorisation, au niveau global, d'utilisation des services web (indispensable par la suite)
+    Ce dump, très minimaliste, ne contient que : 
+     * les informations concernant la licence utilisée
+     * un administrateur global d'identifiants admin:admin
+     * l'autorisation, au niveau global, d'utilisation des services web (indispensable par la suite)
 
-NB : il s'agit d'un dump correspondant à une licence gratuite, prise en janvier 2019, qui expira donc dans le futur.  
+    **WARNING** : il s'agit d'un dump correspondant à une licence gratuite, prise en janvier 2019, qui expirera donc dans le futur.  
 
-Créer le service contenant la Base de données Cyclos (PostGreSQL)
-```
-docker-compose up -d cyclos-db
-```
-Tout d'abord, le réseau *mlc_net* est créé. Il va permettre à nos applications de communiquer entre elles.
-Ensuite, l'image de cyclos db est installée si elle n'est pas déjà présente en local. Pour plus d'informations sur comment créer, voir [doc docker de l'image cyclos db](https://hub.docker.com/r/cyclos/db)
+    * _Créer le conteneur de base de données Cyclos (PostGreSQL)_  
+      ```
+      docker-compose up -d cyclos-db
+      ```
 
-Une fois l'image installée, la création puis restauration de la base de données à partir du dump se fait automatiquement à la création du service. En effet, le fichier docker_compose.yml, et plus précisement services.cyclos-db.volumes contient cette ligne : `- ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql`. C'est parce que le fichier de dump, au format sql, est placé dans le dossier _docker-entrypoint-initdb.d_, qu'il est exécuté au lancement du service.
+      Tout d'abord, le réseau de nom *mlc_net* est créé. Il va permettre aux applications de communiquer entre elles.
+      Ensuite, l'image de cyclos db est installée si elle n'est pas déjà présente en local. Pour plus d'informations sur [l'image cyclos db](https://hub.docker.com/r/cyclos/db)  
+      
+      Une fois l'image téléchargée, la création puis restauration de la base de données à partir du dump se fait automatiquement à la création du service. En effet, le chemin du docker_compose `services.cyclos-db.volumes` contient cette ligne : `- ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql`.  
+      C'est parce que le fichier de dump, au format sql, est placé dans le dossier `/docker-entrypoint-initdb.d`, qu'il est exécuté au lancement du service.
 
-On vérifie que la restauration de la BDD est bien en cours : 
-```
-docker-compose logs -f cyclos-db
-```
+    * _Vérifier que la restauration est bien en cours_  
+      ```
+      docker-compose logs -f cyclos-db
+      ```
+    * _Créer le conteneur de l'application Cyclos_
+      Une fois la restauration complétée, on lance le service de l'application Cyclos. De même, l'image est installée en local si elle n'est pas déjà présente avant d'effectivement créer le service.  
+      ```
+      docker-compose up -d cyclos-app
+      ```
+ * **Générer la configuration finale de Cyclos et un jeu de données**
+   
+    Dans le cadre de la documentation, nous allons nous mettre en situation de développement, c'est-à-dire  `services.api.environment.ENV = dev`. Mais la méthode est la même pour un environnement différent (test / prod)
+    Pour générer la configuration Cyclos et le jeu de données, nous allons créer le dernier conteneur de ce dépôt : le conteneur _api_. Notre Dockerfile contient une instruction qui va être executée au lancement du service :
+    `ENTRYPOINT ["/cyclos/setup_cyclos.sh"]`  
 
-Une fois la restauration complétée, on lance le service de l'application Cyclos. De même, l'image est installée en local si elle n'est pas déjà présente avant d'effectivement créer le service. 
-```
-docker-compose up -d cyclos-app
-```
+    Le script python `etc/cyclos/setup_cyclos.py` fait trois choses :
+      * vérifie que le fichier `etc/cyclos/cyclos_constants_dev.yml` n'existe pas. S'il existe, cela signifie que la configuration Cyclos a déjà été effectuée, et que les scripts de génération n'ont pas à être exécutés.
+      * lance le script `setup.py` de génération de la configuration cyclos (voir `etc/cyclos/setup.py` dans le dépôt local). La configuration contient un réseau (au sens de Cyclos), les monnaies, des groupes d'utilisateurs, des produits... 
+      * lance le script `init_test_data` de génération du jeu de données (si et seulement si  `services.api.environment.ENV != prod`) : création d'utilisateurs adhérents particuliers/prestataires, des administrateurs réseaux. Réalisation de changes numériques et de paiements.
 
-Il nous reste à créer le service api. A la création du service, plusieurs scripts sont automatiquement lancés afin de :
- * générer toute la configuration Cyclos : un réseau, les monnaies, les groupes d'utilisateurs, les produits...
- * si l'environnement n'est pas 'prod', générer un ensemble de données : utilisateurs, paiement
+    _Info_ : Si on a `services.api.environment.ENV=dev` et `services.api.environment.CURRENCY_SLUG=cairn`, le réseau cyclos automatiquement généré aura pour  nom et  nom interne 'devcairn'. L'URL pour accéder à ce réseau dans cyclos sera donc localhost:1234/devcairn.  
+    
+    * _Créer le conteneur api et vérifier l'exécution des scripts_
+    ```
+    docker-compose up -d api
+    docker-compose logs -f api
+    ```
 
-Mais avant, jetons un oeil au fichier docker_compose.yml. 
-Si on a services.api.environment.ENV=dev et services.api.environment.CURRENCY\_SLUG=cairn, le réseau cyclos automatiquement généré aura pour  nom et  nom interne 'devcairn'. L'URL pour accéder à ce réseau dans cyclos sera donc localhost:1234/devcairn
-De plus, si ENV != prod, le script python présent dans le fichier `etc/cyclos/init\_test\_data.py` est lancé et génère des données automatiques : des utilisateurs prestataires/particuliers, des administateurs réseaux, puis des paiements.
-```
-docker-compose up -d api
-```
-
-On peut contrôler la génération de la configuration Cyclos puis des données : 
-```
-docker-compose logs -f api
-```
-
-A la fin de la création de ces 3 services, on a : 
- * une base de données Cyclos PostGreSql 
- * une configuration Cyclos
- * un jeu de données créé grâce au script `etc/cyclos/init\_test\_data.py` avec des administrateurs réseaux, des adhérents particuliers/prestataires, des changes numériques et des paiements immédiats / programmés
- * un fichier `etc/cyclos/cyclos\_constants\_dev.yml` contenant toutes les constantes Cyclos. Il est nécessaire au fonctionnement de l'API
+    A la fin de la création de ces 3 services, on a : 
+      * une base de données Cyclos
+      * une configuration Cyclos
+      * un jeu de données créé grâce au script `etc/cyclos/init_test_data.py`
+      * un fichier `etc/cyclos/cyclos_constants_dev.yml` généré, contenant toutes les constantes Cyclos. Il est nécessaire au fonctionnement de l'API
 
 ## Et si on veut ?
- * Recréer les applications à partir de 0 ?
+ * **Recréer les applications à partir de 0 ?**
     ``` 
     sudo rm -rf data/cyclos
     sudo rm etc/cyclos/cyclos_constants_dev.yml
     sudo docker-compose stop
     sudo docker-compose rm
     ```
-    Puis on reprend depuis le début du README. 
-    ATTENTION 1 : Si les fichiers dans data/cyclos ne sont pas supprimés, la restauration à partir du dump n'est pas executée à la création du script
-    ATTENTION 2 : Si services.api.environment.ENV=dev et le fichier etc/cyclos/cyclos_constants_dev.yml, la configuration Cyclos et le jeu de données ne sont pas executés
+    Puis on reprend depuis le début du README.   
+    **ATTENTION 1** : Si les fichiers dans data/cyclos ne sont pas supprimés, la restauration à partir du dump n'est pas executée à la création du conteneur  
+    **ATTENTION 2** : Si services.api.environment.ENV=dev et le fichier etc/cyclos/cyclos_constants_dev.yml existe, la configuration Cyclos et le jeu de données ne sont pas réexécutés
 
- * Regénérer des données (utilisateurs / paiements) mais conserver la BDD Cyclos et sa configuration ?
-    On se place, pour l'exemple, dans le cas où services.api.environment.ENV=dev . On va, depuis le conteneur avec la BDD Cyclos, lancer un script sql qui va nettoyer les réseaux cyclos ayant dans leur nom interne la sous-chaîne de caractères 'dev'.
+ * **Regénérer des données (utilisateurs / paiements) mais conserver la BDD Cyclos et sa configuration ?**  
+
+    On se place, dans le cadre explication, dans un environnement de développement . Directement dans le conteneur de la base de données Cyclos (services.cyclos-db), on va lancer un script sql (voir `etc/cyclos/script_clean_database_dev.sql`) qui va nettoyer les réseaux cyclos ayant dans leur nom interne la sous-chaîne de caractères 'dev'.  
     
-    WARNING : Ce script ne fonctionne pas dans le cas général, le nombre de liens entre les différentes tables (clés étrangères notamment) étant très varié et dépendant de l'utilisation de l'outil. Il fonctionne dans le cadre du script de génération de données actuel.
+    **WARNING** : Ce script ne fonctionne pas dans le cas général. En effet, les clés étrangères liant les différentes tables sont très nombreuses, ce qui rend difficile la mise en place d'un script générique. Il va dépendre de l'utilisation que chacun a de l'outil. Il fonctionne dans le cadre du script de génération de données actuel.  
 
-    D'abord, on affiche la liste des conteneurs actifs, afin de récupérer le nom du conteneur de la BDD Cyclos
+    * _Récupérer le nom du conteneur cyclos-db_
+    On récupère la liste des conteneurs actifs, et on sélectionne le nom correspondant à l'image cyclos/db
     ```
     sudo docker ps
     ```
-    On suppose que le nom est : api_cairn_cyclos-db_1
+    Supposons que le nom est : api_cairn_cyclos-db_1
 
+    * _Lancer le script de nettoyage de la base de données_
     Pour l'instant, je ne suis pas parvenu à lancer le script depuis l'extérieur du conteneur, il faut donc le lancer depuis l'intérieur
     ```
     docker cp etc/cyclos/script_clean_database_dev.sql  api_cairn_cyclos-db_1:/
     docker-compose exec cyclos-db sh
     psql -U cyclos cyclos < script_clean_database_dev.sql    
     ```
+    Le 1er 'cyclos' correspond au nom du user (au sens PostGreSQL) ayant les privilèges en écriture/lecture de la base de données nommée 'cyclos' (2ème)
 
-    Ensuite, vous pouvez ajouter/modifier des données dans `etc/cyclos/init\_test\_data.py`
-    Enfin, la commande pour relancer le script de génération de données : 
+    * _Modifier le jeu de données de test et le générer
+    Ensuite, vous pouvez ajouter/modifier des données dans `etc/cyclos/init_test_data.py`, puis
     ```
     docker-compose exec api python /cyclos/init_test_data.py http://cyclos-app:8080/ `echo -n admin:admin | base64`
     ```
