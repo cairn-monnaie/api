@@ -3,7 +3,6 @@ version: '3.5'
 networks:
   mlc_net:
     driver: bridge
-    name: mlc_net
 
 services:
   api:
