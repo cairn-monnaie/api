@@ -4,6 +4,7 @@ __pycache__/
 .~lock*
 .cache/
 .env
+/.idea/
 
 data/
 log/
