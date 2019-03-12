@@ -3,6 +3,8 @@ __pycache__/
 *.db
 .~lock*
 .cache/
+.env
+/.idea/
 
 data/
 log/
