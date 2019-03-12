@@ -49,12 +49,12 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
 
     * _Vérifier que la restauration est bien en cours_  
       ```
-      docker-compose logs -f cyclos-db
+      sudo docker-compose logs -f cyclos-db
       ```
     * _Créer le conteneur de l'application Cyclos_
       Une fois la restauration complétée, on lance le service de l'application Cyclos. De même, l'image est installée en local si elle n'est pas déjà présente avant d'effectivement créer le service.  
       ```
-      docker-compose up -d cyclos-app
+      sudo docker-compose up -d cyclos-app
       ```
  * **Générer la configuration finale de Cyclos et un jeu de données**
    
@@ -72,8 +72,8 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
     
     * _Créer le conteneur api et vérifier l'exécution des scripts_
     ```
-    docker-compose up -d api
-    docker-compose logs -f api
+    sudo docker-compose up -d api
+    sudo docker-compose logs -f api
     ```
 
     A la fin de la création de ces 3 services, on a : 
