@@ -1,0 +1,14 @@
+version: '3.5'
+
+services:
+  api:
+    volumes:
+      - ./src/api:/usr/src/app
+      - ./etc/cyclos:/cyclos
+      - ./etc/dolibarr:/dolibarr
+
+  cyclos-db:
+    volumes:
+      - ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql
+      - ./data/cyclos/postgresql:/var/lib/postgresql/data
+

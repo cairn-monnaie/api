@@ -6,7 +6,6 @@ WORKDIR=$(pwd)
 
 cd /cyclos
 
-PASS=`echo -n admin:admin | base64`
 
 until [ `curl --silent --write-out '%{response_code}' -o /dev/null http://cyclos-app:8080/global/` -eq 200 ];
 do
@@ -14,7 +13,12 @@ do
   sleep 10
 done
 
-if [ ! -f ./cyclos_constants_dev.yml ]; then
+if [ ! -f ./cyclos_constants_$ENV.yml ]; then
+    read -p "Global Admin Login?" login
+    read -p "Global Admin password?" password
+    
+    PASS=`echo -n $login:$password | base64`
+
     python setup.py http://cyclos-app:8080/ $PASS
     python init_test_data.py http://cyclos-app:8080/ $PASS
 fi

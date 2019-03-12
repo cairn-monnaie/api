@@ -163,7 +163,7 @@ check_request_status(r)
 login_password_config = r.json()['result']
 login_password_config['blockTime'] = {
         'amount': 0,
-        'field': 'SECONDS'
+        'field': 'MINUTES'
         }
 #contrainte de validation sur la taille des mots de passe
 login_password_config['length'] = {
@@ -2530,6 +2530,7 @@ set_admin_group_permissions(
         'FULL_NAME',
         'LOGIN_NAME',
         'ACCOUNT_NUMBER',
+        'EMAIL',
         ID_CHAMP_PERSO_UTILISATEUR_BDC,
     ],
     change_group='MANAGE',
@@ -2592,9 +2593,10 @@ set_admin_group_permissions(
         'FULL_NAME',
         'LOGIN_NAME',
         'ACCOUNT_NUMBER',
+        'EMAIL',
     ],
     user_registration=True,
-    disabled_users='VIEW',
+#    disabled_users='VIEW',
     access_user_accounts=[
         ID_STOCK_DE_BILLETS_BDC,
         ID_CAISSE_EURO_BDC,
