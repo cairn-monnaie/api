@@ -8,30 +8,27 @@ networks:
 services:
   api:
     build: . 
-    volumes:
-      - ./src/api:/usr/src/app
-      - ./etc/cyclos:/cyclos
-      - ./etc/dolibarr:/dolibarr
     ports:
       - 8000:8000
     environment:
-      - CURRENCY_SLUG=cairn
-      - CURRENCY_SYMBOL=CRN
-      - ENV=test
-      - SESSION_TIMEOUT=1500
-      - MIN_LENGTH_PWD=4
-      - MAX_LENGTH_PWD=25 
-      - DJANGO_DEBUG=True
+      - CURRENCY_SLUG=${CURRENCY_SLUG}
+      - CURRENCY_SYMBOL=${CURRENCY_SYMBOL}
+      - ENV=${ENV}
+      - SESSION_TIMEOUT=${SESSION_TIMEOUT}
+      - MIN_LENGTH_PWD=${MIN_LENGTH_PWD}
+      - MAX_LENGTH_PWD=${MAX_LENGTH_PWD} 
+      - DJANGO_DEBUG=${DJANGO_DEBUG} 
       - API_PUBLIC_URL=http://localhost:8000
       - DOLIBARR_PUBLIC_URL=http://localhost:8080
       - BDC_PUBLIC_URL=http://localhost:8001
       - GI_PUBLIC_URL=http://localhost:8002
       - CEL_PUBLIC_URL=http://front:8000
-      - EMAIL_NOTIFICATION_GESTION=gestion@euskalmoneta.org
+      - EMAIL_NOTIFICATION_GESTION=${EMAIL_NOTIFICATION_GESTION}
       - RAVEN_CONFIG_DSN=http://46498c24303d4b27828e5e47ce927818:6177efcf6d1d47508f1c22332c8dddaf@sentry:9000/2
     depends_on:
       - cyclos-app
-        #      - dolibarr-app
+    stdin_open: true
+    tty: true
     networks:
       - mlc_net
 
@@ -78,10 +75,9 @@ services:
     image: cyclos/cyclos:4.11.2
     environment:
     - DB_HOST=cyclos-db
-    - DB_NAME=cyclos
-    - DB_USER=cyclos
-    - DB_PASSWORD=cyclos
-    restart: always
+    - DB_NAME=${POSTGRES_DB}
+    - DB_USER=${POSTGRES_USER}
+    - DB_PASSWORD=${POSTGRES_PASSWORD}
     ports:
     - '${CYCLOS_PORT}:8080'
     networks:
@@ -89,14 +85,10 @@ services:
 
   cyclos-db:
     image: cyclos/db
-    volumes:
-      - ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql
-      - ./data/cyclos/postgresql:/var/lib/postgresql/data
     environment:
-    - POSTGRES_DB=cyclos
-    - POSTGRES_USER=cyclos
-    - POSTGRES_PASSWORD=cyclos
-    restart: always
+    - POSTGRES_DB=${POSTGRES_DB}
+    - POSTGRES_USER=${POSTGRES_USER}
+    - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - mlc_net
 
