@@ -14,8 +14,8 @@ do
 done
 
 if [ ! -f ./cyclos_constants_$ENV.yml ]; then
-    read -p "Global Admin Login?" login
-    read -p "Global Admin password?" password
+    read -p "Global Admin Login? > " login
+    read -p "Global Admin password? > " password
     
     PASS=`echo -n $login:$password | base64`
 
