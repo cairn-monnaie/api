@@ -49,7 +49,7 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
 
     * _Vérifier que la restauration est bien en cours_  
       ```
-      docker-compose logs -f cyclos-db
+      sudo docker-compose logs -f cyclos-db
       ```
     * _Créer le conteneur de l'application Cyclos_
       Copier le fichier template des variables d'environnement docker et choisir le port externe pour l'application Cyclos.   
@@ -57,7 +57,7 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
      
       Une fois la restauration complétée, on lance le service de l'application Cyclos. De même, l'image est installée en local si elle n'est pas déjà présente avant d'effectivement créer le service.  
       ```
-      docker-compose up -d cyclos-app
+      sudo docker-compose up -d cyclos-app
       ```
  * **Générer la configuration finale de Cyclos et un jeu de données**
    
@@ -74,17 +74,18 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
     _Info_ : Si on a `services.api.environment.ENV=dev` et `services.api.environment.CURRENCY_SLUG=cairn`, le réseau cyclos automatiquement généré aura pour  nom et  nom interne 'devcairn'. L'URL pour accéder à ce réseau dans cyclos sera donc localhost:1234/devcairn.  
     
     * _Créer le conteneur api et vérifier l'exécution des scripts_
+
       * Lancer les scripts d'initialisation 
         Etant donné que le script bash `etc/cyclos/setup_cyclos.sh` nécessite une interaction avec l'utilisateur, nous allons créer un conteneur temporaire nommé 'api_container' à partir du service 'api', puis nous allons le supprimer. 
         ```
-        docker-compose run --name api_container api (renseigner login puis password de l'admin global Cyclos)
-        docker container rm api_container
+        sudo docker-compose run --name api_container api (renseigner login puis password de l'admin global Cyclos)
+        sudo docker container rm api_container
         ```
 
       * Lancer le service destiné à tourner en permanence
         ```
-        docker-compose up -d api
-        docker-compose logs -f api
+        sudo docker-compose up -d api
+        sudo docker-compose logs -f api
         ```
 
     A la fin de la création de ces 3 services, on a : 
