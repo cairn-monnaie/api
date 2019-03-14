@@ -2283,11 +2283,11 @@ utilisateurs = 'Adhérents utilisateurs'
 # ce problème étant réglé, on peut les autoriser sans crainte par défaut
 ID_GROUPE_ADHERENTS_PRESTATAIRES = create_member_group(
     name=prestataires,
-    initial_user_status='ACTIVE',
+    initial_user_status='DISABLED',
 )
 ID_GROUPE_ADHERENTS_UTILISATEURS = create_member_group(
     name=utilisateurs,
-    initial_user_status='ACTIVE',
+    initial_user_status='DISABLED',
 )
 
 # Permissions pour les prestataires.
@@ -2647,15 +2647,15 @@ set_admin_group_permissions(
         ID_GROUPE_ADHERENTS_UTILISATEURS,
         ID_GROUPE_ADHERENTS_SANS_COMPTE,
     ],
-    user_profile_fields=[
-        'FULL_NAME',
-        'LOGIN_NAME',
-    ],
-    change_group='MANAGE',
+#    user_profile_fields=[
+#        'FULL_NAME',
+#        'LOGIN_NAME',
+#    ],
+#    change_group='MANAGE',
     disabled_users='MANAGE',
-    user_password_actions=[
-        'login',
-    ],
+#    user_password_actions=[
+#        'login',
+#    ],
 )
 
 

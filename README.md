@@ -2,7 +2,7 @@
 
 ## Prérequis
  * git
- * docker && docker-compose (Docker Engine version 17.12.0 and higher)
+ * docker && docker-compose
 
  * Se placer sur la branche cairn du dépôt api. Depuis la racine du projet :  
    ```
@@ -38,7 +38,7 @@ Ainsi, c'est seulement une fois que les services du dépôt API sont correctemen
 
     * _Créer le conteneur de base de données Cyclos (PostGreSQL)_  
       ```
-      sudo docker-compose up -d cyclos-db
+      docker-compose up -d cyclos-db
       ```
 
       Tout d'abord, le réseau de nom *mlc_net* est créé. Il va permettre aux applications de communiquer entre elles.
