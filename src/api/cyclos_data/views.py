@@ -97,6 +97,44 @@ def get_bdc_name(request):
     """
     return Response(request.user.profile.lastname)
 
+@api_view(['GET'])
+def get_digital_mlc_available(request):
+    """
+    Get the amount of digital mlc available in money safe
+    """
+
+    try:
+        cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
+        try:
+#            auth_token = request.query_params['api_key']
+#            username = request.query_params['username']
+#            log.debug('username : ' + username)
+#            log.debug('auth_token : ' + auth_token)
+            query_data = [cyclos.user_id, None]
+            accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
+
+            # Stock de billets: stock_de_billets                                       
+            # Compte de transit: compte_de_transit                                     
+            res = {}
+            filter_keys = ['compte_de_debit_mlc_numerique']
+            for filter_key in filter_keys:
+                data = [item
+                        for item in accounts_summaries_data['result']
+                        if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['account_types'][filter_key])][0]
+
+                res[filter_key] = {}
+                res[filter_key]['balance'] = float(data['status']['balance'])
+                res[filter_key]['currency'] = data['currency']['symbol']
+
+        except (CyclosAPIException, KeyError, IndexError):
+            return Response({'error': 'Unable to get account balance!'},
+                    status=status.HTTP_400_BAD_REQUEST)
+
+    except CyclosAPIException:
+        return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(res[filter_key])
+
 #@api_view(['GET'])
 #def get_usergroups(request):
 #    """

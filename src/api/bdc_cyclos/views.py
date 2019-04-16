@@ -854,10 +854,16 @@ def depot_mlc_numerique(request):
 #    else:
 #        member_name = dolibarr_member['company']
 
+    # Get amount of available digital mlc
+    if request.data['amount'] > availableAmount:
+        credit_amount = availableAmount
+    else:
+        credit_amount = request.data['amount']
+
     # Retour des Eusko billets
     retour_mlc_billets_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['depot_de_billets']),
-        'amount': request.data['amount'],  # montant saisi
+        'amount': credit_amount,  # montant saisi
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
         'to': cyclos.user_bdc_id,  # ID de l'utilisateur Bureau de change
@@ -874,7 +880,7 @@ def depot_mlc_numerique(request):
     # Crédit du compte MLC numérique du prestataire
     depot_mlc_numerique_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['credit_du_compte']),
-        'amount': request.data['amount'],  # montant saisi
+        'amount': credit_amount,  # montant saisi
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
         'to': member_cyclos_id,  # ID de l'adhérent
@@ -894,7 +900,7 @@ def depot_mlc_numerique(request):
     transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
     data_cel = {
             'paymentID': res['transferId'],
-            'amount': request.data['amount'],
+            'amount': credit_amount,
             'fromAccountNumber': transfer['from']['number'],
             'toAccountNumber': transfer['to']['number'],
             'reason': 'Dépôt sur le compte',

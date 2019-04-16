@@ -17,6 +17,7 @@ import association_data.views as association_data_views
 import gestioninterne.views as gi_views
 import gestioninterne.credits_comptes_prelevements_auto as credits_views
 
+
 router = routers.SimpleRouter()
 router.register(r'bdc', BDCAPIView, base_name='bdc')
 router.register(r'members', MembersAPIView, base_name='members')
@@ -27,13 +28,14 @@ router.register(r'securityqa', SecurityQAViewSet, base_name='securityqa')
 urlpatterns = [
     # Auth token
     url(r'^api-token-auth/', auth_token_views.obtain_auth_token),
-    # Dolibarr data, data we fetch from its API
+    # Cyclos data, data we fetch from its API
     url(r'^login/$', cyclos_data_views.login),
     url(r'^usergroups/$', dolibarr_data_views.get_usergroups),
     url(r'^verify-usergroup/$', cyclos_data_views.verify_usergroup),
     url(r'^associations/$', dolibarr_data_views.associations),
     url(r'^countries/$', dolibarr_data_views.countries),
     url(r'^bdc-name/$', cyclos_data_views.get_bdc_name),
+    url(r'^available-electronic-mlc/$', cyclos_data_views.get_digital_mlc_available),
     url(r'^member-name/$', dolibarr_data_views.get_member_name),
     url(r'^user-data/$', dolibarr_data_views.get_user_data),
     url(r'^username/$', dolibarr_data_views.get_username),
