@@ -113,8 +113,6 @@ def get_digital_mlc_available(request):
             query_data = [cyclos.user_id, None]
             accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
 
-            # Stock de billets: stock_de_billets                                       
-            # Compte de transit: compte_de_transit                                     
             res = {}
             filter_keys = ['compte_de_debit_mlc_numerique']
             for filter_key in filter_keys:

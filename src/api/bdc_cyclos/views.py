@@ -855,7 +855,18 @@ def depot_mlc_numerique(request):
 #        member_name = dolibarr_member['company']
 
     # Get amount of available digital mlc
-    if request.data['amount'] > availableAmount:
+    query_data = [cyclos.user_id, None]
+    accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
+
+    filter_keys = ['compte_de_debit_mlc_numerique']
+    for filter_key in filter_keys:
+        data = [item
+                for item in accounts_summaries_data['result']
+                if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['account_types'][filter_key])][0]
+
+        availableAmount = float(data['status']['balance'])
+
+    if float(request.data['amount']) > availableAmount:
         credit_amount = availableAmount
     else:
         credit_amount = request.data['amount']
@@ -1148,10 +1159,27 @@ def change_euro_mlc_numeriques(request):
 #    else:
 #        member_name = dolibarr_member['company']
 
+    # Get amount of available digital mlc
+    query_data = [cyclos.user_id, None]
+    accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
+
+    filter_keys = ['compte_de_debit_mlc_numerique']
+    for filter_key in filter_keys:
+        data = [item
+                for item in accounts_summaries_data['result']
+                if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['account_types'][filter_key])][0]
+
+        availableAmount = float(data['status']['balance'])
+
+    if float(request.data['amount']) > availableAmount:
+        credit_amount = availableAmount
+    else:
+        credit_amount = request.data['amount']
+
     # payment/perform
     bdc_query_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['change_numerique_en_bdc_versement_des_euro']),
-        'amount': request.data['amount'],
+        'amount': credit_amount,
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['euro']),
         'from': 'SYSTEM',
         'to': cyclos.user_bdc_id,  # ID de l'utilisateur Bureau de change
@@ -1174,7 +1202,7 @@ def change_euro_mlc_numeriques(request):
     # payment/perform
     query_data = {
         'type': str(settings.CYCLOS_CONSTANTS['payment_types']['credit_du_compte']),
-        'amount': request.data['amount'],
+        'amount': credit_amount,
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
         'to': member_cyclos_id,  # ID de l'adhérent
@@ -1195,7 +1223,7 @@ def change_euro_mlc_numeriques(request):
     transfer = cyclos.get(method='transfer/load', id= res['transferId'], token=request.user.profile.cyclos_token)['result']
     data_cel = {
             'paymentID': res['transferId'],
-            'amount': request.data['amount'],
+            'amount': credit_amount,
             'fromAccountNumber': transfer['from']['number'],
             'toAccountNumber': transfer['to']['number'],
             'reason': 'Change numériquue',

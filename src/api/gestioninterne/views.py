@@ -399,6 +399,8 @@ def validate_banques_virement(request):
         }
         cyclos.post(method='payment/perform', data=ventes_query)
 
+    log.debug(bank_user_data['id'])
+    log.debug(str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_mlc_billet']))
     # Change mlc billet
     if request.data['montant_total_billet']:
         change_mlc_billet_query = {
@@ -407,7 +409,7 @@ def validate_banques_virement(request):
             'currency': str(settings.CYCLOS_CONSTANTS['currencies']['euro']),
             'from': bank_user_data['id'],  # ID de l'utilisateur Banque de dépôt
             'to': str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_mlc_billet']),
-            'description': '{} - Changes Eusko billet'.format(bank_user_name)  # nom de la banque de dépôt
+            'description': '{} - Changes Mlc billet'.format(bank_user_name)  # nom de la banque de dépôt
         }
         cyclos.post(method='payment/perform', data=change_mlc_billet_query)
 
@@ -419,7 +421,7 @@ def validate_banques_virement(request):
             'currency': str(settings.CYCLOS_CONSTANTS['currencies']['euro']),
             'from': bank_user_data['id'],  # ID de l'utilisateur Banque de dépôt
             'to': str(settings.CYCLOS_CONSTANTS['users']['compte_dedie_mlc_numerique']),
-            'description': '{} - Changes Eusko numérique'.format(bank_user_name)  # noqa: nom de la banque de dépôt
+            'description': '{} - Changes Mlc numérique'.format(bank_user_name)  # noqa: nom de la banque de dépôt
         }
         cyclos.post(method='payment/perform', data=change_mlc_numerique_query)
 
