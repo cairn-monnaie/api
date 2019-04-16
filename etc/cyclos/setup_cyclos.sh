@@ -20,6 +20,7 @@ if [ ! -f ./cyclos_constants_$ENV.yml ]; then
     PASS=`echo -n $login:$password | base64`
 
     python setup.py http://cyclos-app:8080/ $PASS
+    sleep 5
     python init_test_data.py http://cyclos-app:8080/ $PASS
 fi
 

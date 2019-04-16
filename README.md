@@ -11,7 +11,12 @@
    ```
 
 ## Introduction
-L'application API (ce dépôt) est centrale dans le fonctionnement des différentes applications "clientes" : CEL, BDC, et GI. Il est donc logique que l'organisation des services (au sens de docker) reflète bien cette dépendance des applications dites clientes envers l'API.
+L'application API (ce dépôt) est centrale dans le fonctionnement des différentes applications "clientes" :  
+  * CEL (Compte En Ligne) 
+  * BDC (Bureau de Change)
+  * GI  (Gestion Interne)  
+
+Il est donc logique que l'organisation des services (au sens de docker) reflète bien cette dépendance des applications dites clientes envers l'API.
 Il est donc logique que les conteneurs Cyclos soient dans ce dépôt, puisque toutes les applications vont en avoir besoin.  
 Ainsi, c'est seulement une fois que les services du dépôt API sont correctement installés qu'on passe à l'installation du dépôt CEL.
 
