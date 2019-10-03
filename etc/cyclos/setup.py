@@ -153,7 +153,7 @@ for password_type in password_types:
 logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
 logger.debug('ID_PASSWORD_PIN = %s', ID_PASSWORD_PIN)
 
-# On charge le type de mot de passe pour le modifier : 
+# On charge le type de mot de passe pour le modifier :
 # validation des mots de passe : entre 8 et 25 caractères
 r = requests.get(
         global_web_services + 'passwordType/load/' + ID_PASSWORD_LOGIN,
@@ -393,6 +393,7 @@ all_token_types = [
 
 
 ########################################################################
+# Création des accès clients
 # Création du client "Point de vente NFC".
 #
 def create_access_client(name, plural_name, maximum_per_user, permission):
@@ -428,57 +429,67 @@ ID_CLIENT_SMS = create_access_client(
     permission='RECEIVE_AND_MAKE_PAYMENT',
 )
 
+#@WARNING : utile uniquement pour le Cairn afin d'authentifier chaque utilisateur via l'app CEL
+ID_CLIENT_MAIN = create_access_client(
+    name='main',
+    plural_name='mains',
+    maximum_per_user=1,
+    permission='RECEIVE_AND_MAKE_PAYMENT',
+)
+
 all_access_clients = [
     ID_CLIENT_POINT_DE_VENTE_NFC,
-    ID_CLIENT_SMS
+    ID_CLIENT_SMS,
+    ID_CLIENT_MAIN
 ]
 
 ########################################################################
-## Modification du canal web services à l'echelle réseau pour autoriser
-## la connexion via le client SMS 
-## D'abord on récupère l'id de la config par défaut.
-#logger.info('Récupération de l\'id de la configuration par défaut...')
-#r = requests.get(network_web_services + 'configuration/getDefault',
-#                 headers=headers)
-#check_request_status(r)
-#mlc_default_config_id = r.json()['result']['id']
-#
-## Puis on liste les config de canaux pour retrouver l'id de la config
-## du canal "Web services".
-#r = requests.get(
-#    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
-#    headers=headers
-#)
-#check_request_status(r)
-#for channel_config in r.json()['result']:
-#    if channel_config['channel']['internalName'] == 'webServices':
-#        ws_config_id = channel_config['id']
-#
-## Ensuite on charge la config du canal "Web services", pour pouvoir la
-## modifier.
-#r = requests.get(
-#    global_web_services + 'channelConfiguration/load/' + ws_config_id,
-#    headers=headers
-#)
-#check_request_status(r)
-#ws_config = r.json()['result']
-#
-#logger.info('Récupération de la liste des types de mots de passe...')
-#r = requests.get(network_web_services + 'passwordType/list', headers=headers)
-#check_request_status(r)
-#password_types = r.json()['result']
-#for password_type in password_types:
-#    if password_type['internalName'] == 'login':
-#        ID_PASSWORD_LOGIN = password_type['id']
-#logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
-#
-#ws_config['principalTypes'] = [ID_CLIENT_SMS,ID_PASSWORD_LOGIN ]
-#r = requests.post(
-#    global_web_services + 'channelConfiguration/save',
-#    headers=headers,
-#    json=ws_config
-#)
-#check_request_status(r)
+# Modification du canal web services à l'echelle réseau pour autoriser
+# la connexion via le client SMS
+# D'abord on récupère l'id de la config par défaut.
+logger.info('Récupération de l\'id de la configuration par défaut...')
+r = requests.get(network_web_services + 'configuration/getDefault',
+                 headers=headers)
+check_request_status(r)
+mlc_default_config_id = r.json()['result']['id']
+
+# Puis on liste les config de canaux pour retrouver l'id de la config
+# du canal "Web services".
+r = requests.get(
+    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
+    headers=headers
+)
+check_request_status(r)
+for channel_config in r.json()['result']:
+    if channel_config['channel']['internalName'] == 'webServices':
+        ws_config_id = channel_config['id']
+
+# Ensuite on charge la config du canal "Web services", pour pouvoir la
+# modifier.
+r = requests.get(
+    global_web_services + 'channelConfiguration/load/' + ws_config_id,
+    headers=headers
+)
+check_request_status(r)
+ws_config = r.json()['result']
+logger.info(r.json())
+
+logger.info('Récupération de la liste des types de mots de passe...')
+r = requests.get(network_web_services + 'passwordType/list', headers=headers)
+check_request_status(r)
+password_types = r.json()['result']
+for password_type in password_types:
+    if password_type['internalName'] == 'login':
+        ID_PASSWORD_LOGIN = password_type['id']
+logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
+
+ws_config['principalTypes'] = [ID_PASSWORD_LOGIN ]
+r = requests.post(
+    global_web_services + 'channelConfiguration/save',
+    headers=headers,
+    json=ws_config
+)
+check_request_status(r)
 
 
 ########################################################################
@@ -932,6 +943,12 @@ ID_COMPTE_DEDIE = create_user_account_type(
 )
 
 # Comptes pour la monnaie locale numérique
+ID_COFFRE_MLC_NUMERIQUE = create_system_account_type(
+    name='Compte de credit coffre numerique',
+    currency_id=ID_DEVISE_LOCAL_CURRENCY,
+    limit_type='UNLIMITED',
+)
+
 ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE = create_system_account_type(
     name='Compte de débit ' + LOCAL_CURRENCY_INTERNAL_NAME + ' numérique',
     currency_id=ID_DEVISE_LOCAL_CURRENCY,
@@ -949,7 +966,9 @@ all_system_accounts = [
     ID_COMPTE_DES_BILLETS_EN_CIRCULATION,
     ID_COMPTE_DE_DEBIT_EURO,
     ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE,
+    ID_COFFRE_MLC_NUMERIQUE
 ]
+
 all_user_accounts = [
     ID_STOCK_DE_BILLETS_BDC,
     ID_CAISSE_EURO_BDC,
@@ -1191,6 +1210,14 @@ ID_TYPE_PAIEMENT_SORTIE_COFFRE = create_payment_transfer_type(
         ID_STATUS_A_RAPPROCHER,
     ],
 )
+
+ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE = create_payment_transfer_type(
+    name='Creation MLC numeriques',
+    direction='SYSTEM_TO_SYSTEM',
+    from_account_type_id=ID_COFFRE_MLC_NUMERIQUE ,
+    to_account_type_id=ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE ,
+)
+
 ID_TYPE_PAIEMENT_ENTREE_COFFRE = create_payment_transfer_type(
     name='Entrée coffre',
     direction='SYSTEM_TO_SYSTEM',
@@ -1768,6 +1795,7 @@ all_system_to_system_payments = [
     ID_TYPE_PAIEMENT_DESTRUCTION_BILLETS,
     ID_TYPE_PAIEMENT_SORTIE_COFFRE,
     ID_TYPE_PAIEMENT_ENTREE_COFFRE,
+    ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE
 ]
 all_system_to_user_payments = [
     ID_TYPE_PAIEMENT_ENTREE_STOCK_BDC,
@@ -2001,6 +2029,7 @@ def set_admin_group_permissions(
         group_id,
         my_profile_fields=[],
         password_actions=[],
+        my_access_clients=[],
         visible_transaction_fields=[],
         transfer_status_flows=[],
         system_accounts=[],
@@ -2052,6 +2081,16 @@ def set_admin_group_permissions(
         if password_action['passwordType']['internalName'] in password_actions:
             password_action['change'] = True
             password_action['atRegistration'] = True
+    #access main client
+    for access_client in product['myAccessClients']:
+        if access_client['accessClientType']['id'] in my_access_clients:
+            access_client['enable'] = True
+            access_client['view'] = True
+            access_client['block'] = True
+            access_client['unblock'] = True
+            access_client['manage'] = True
+            access_client['activate'] = True
+            access_client['unassign'] = True
     product['visibleTransactionFields'] = visible_transaction_fields
     # Status flows.
     for product_transfer_status_flow in product['transferStatusFlows']:
@@ -2278,7 +2317,7 @@ ID_GROUPE_COMPTES_DEDIES = create_member_group(
 prestataires = 'Adhérents prestataires'
 utilisateurs = 'Adhérents utilisateurs'
 
-# @WARNING : avant c'etait DISABLED, sûrement parce que le jeu de tests utilisateurs 
+# @WARNING : avant c'etait DISABLED, sûrement parce que le jeu de tests utilisateurs
 # était généré indépendamment de l'environnement (prod / dev / test) --> c'était un FIXME dans init_test_data.py
 # ce problème étant réglé, on peut les autoriser sans crainte par défaut
 ID_GROUPE_ADHERENTS_PRESTATAIRES = create_member_group(
@@ -2325,6 +2364,7 @@ ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
     my_access_clients=[
         ID_CLIENT_POINT_DE_VENTE_NFC,
         ID_CLIENT_SMS,
+        ID_CLIENT_MAIN,
     ],
     my_token_types=[
         ID_TOKEN_CARTE_NFC,
@@ -2376,6 +2416,7 @@ ID_PRODUIT_ADHERENTS_UTILISATEURS = create_member_product(
     ],
     my_access_clients=[
         ID_CLIENT_SMS,
+        ID_CLIENT_MAIN,
     ],
     my_token_types=[
         ID_TOKEN_CARTE_NFC,
@@ -2466,9 +2507,10 @@ set_admin_group_permissions(
             'login',
             ],
         visible_transaction_fields=[],#all_transaction_fields,
+        my_access_clients = ['ID_CLIENT_MAIN'],
         transfer_status_flows=[],#all_status_flows,
         system_accounts=all_system_accounts,
-        system_to_system_payments=[],#all_system_to_system_payments,
+        system_to_system_payments=[ ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE ],#all_system_to_system_payments,
         system_to_user_payments=all_system_to_user_payments,
         chargeback_of_payments_to_system=all_payments_to_system,
         accessible_user_groups=[
@@ -2641,16 +2683,16 @@ set_admin_group_permissions(
     system_to_user_payments=[
         ID_TYPE_PAIEMENT_CHANGE_NUMERIQUE_EN_LIGNE_VERSEMENT_DES_EUROS,
         ID_TYPE_PAIEMENT_CHANGE_NUMERIQUE_EN_LIGNE_VERSEMENT_DES_MLC,
+        ID_TYPE_PAIEMENT_CREDIT_DU_COMPTE
     ],
     accessible_user_groups=[
         ID_GROUPE_ADHERENTS_PRESTATAIRES,
         ID_GROUPE_ADHERENTS_UTILISATEURS,
         ID_GROUPE_ADHERENTS_SANS_COMPTE,
     ],
-#    user_profile_fields=[
-#        'FULL_NAME',
-#        'LOGIN_NAME',
-#    ],
+    user_profile_fields=[
+        'ACCOUNT_NUMBER',
+    ],
 #    change_group='MANAGE',
     disabled_users='MANAGE',
 #    user_password_actions=[
