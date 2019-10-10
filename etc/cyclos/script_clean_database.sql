@@ -1,5 +1,5 @@
 begin;
-create table del_users as select id from users where user_group_id in (select id from groups where name <> 'Global administrators' and network_id in (select id from networks where internal_name like '%dev%'));
+create table del_users as select id from users where user_group_id in (select id from groups where name <> 'Global administrators' and network_id in (select id from networks where internal_name like :network));
 create table del_transactions as select id from transactions where (by_id in (select id from del_users) or from_user_id in (select id from del_users) or to_user_id in (select id from del_users));
 create table del_transfers as select id from transfers where (transaction_id in (select id from del_transactions));
 

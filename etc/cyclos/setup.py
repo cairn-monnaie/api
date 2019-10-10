@@ -434,7 +434,7 @@ ID_CLIENT_MAIN = create_access_client(
     name='main',
     plural_name='mains',
     maximum_per_user=1,
-    permission='RECEIVE_AND_MAKE_PAYMENT',
+    permission='ALL',
 )
 
 all_access_clients = [
@@ -443,56 +443,55 @@ all_access_clients = [
     ID_CLIENT_MAIN
 ]
 
-########################################################################
-# Modification du canal web services à l'echelle réseau pour autoriser
-# la connexion via le client SMS
-# D'abord on récupère l'id de la config par défaut.
-logger.info('Récupération de l\'id de la configuration par défaut...')
-r = requests.get(network_web_services + 'configuration/getDefault',
-                 headers=headers)
-check_request_status(r)
-mlc_default_config_id = r.json()['result']['id']
-
-# Puis on liste les config de canaux pour retrouver l'id de la config
-# du canal "Web services".
-r = requests.get(
-    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
-    headers=headers
-)
-check_request_status(r)
-for channel_config in r.json()['result']:
-    if channel_config['channel']['internalName'] == 'webServices':
-        ws_config_id = channel_config['id']
-
-# Ensuite on charge la config du canal "Web services", pour pouvoir la
-# modifier.
-r = requests.get(
-    global_web_services + 'channelConfiguration/load/' + ws_config_id,
-    headers=headers
-)
-check_request_status(r)
-ws_config = r.json()['result']
-logger.info(r.json())
-
-logger.info('Récupération de la liste des types de mots de passe...')
-r = requests.get(network_web_services + 'passwordType/list', headers=headers)
-check_request_status(r)
-password_types = r.json()['result']
-for password_type in password_types:
-    if password_type['internalName'] == 'login':
-        ID_PASSWORD_LOGIN = password_type['id']
-logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
-
-ws_config['principalTypes'] = [ID_PASSWORD_LOGIN ]
-r = requests.post(
-    global_web_services + 'channelConfiguration/save',
-    headers=headers,
-    json=ws_config
-)
-check_request_status(r)
-
-
-########################################################################
+#########################################################################
+## Modification du canal web services à l'echelle réseau pour autoriser
+## la connexion via le client SMS
+## D'abord on récupère l'id de la config par défaut.
+#logger.info('Récupération de l\'id de la configuration par défaut...')
+#r = requests.get(network_web_services + 'configuration/getDefault',
+#                 headers=headers)
+#check_request_status(r)
+#mlc_default_config_id = r.json()['result']['id']
+#
+## Puis on liste les config de canaux pour retrouver l'id de la config
+## du canal "Web services".
+#r = requests.get(
+#    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
+#    headers=headers
+#)
+#check_request_status(r)
+#for channel_config in r.json()['result']:
+#    if channel_config['channel']['internalName'] == 'webServices':
+#        ws_config_id = channel_config['id']
+#
+## Ensuite on charge la config du canal "Web services", pour pouvoir la
+## modifier.
+#r = requests.get(
+#    global_web_services + 'channelConfiguration/load/' + ws_config_id,
+#    headers=headers
+#)
+#check_request_status(r)
+#ws_config = r.json()['result']
+#
+#logger.info('Récupération de la liste des types de mots de passe...')
+#r = requests.get(network_web_services + 'passwordType/list', headers=headers)
+#check_request_status(r)
+#password_types = r.json()['result']
+#for password_type in password_types:
+#    if password_type['internalName'] == 'login':
+#        ID_PASSWORD_LOGIN = password_type['id']
+#logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
+#
+#ws_config['principalTypes'] = [ID_PASSWORD_LOGIN ]
+#r = requests.post(
+#    global_web_services + 'channelConfiguration/save',
+#    headers=headers,
+#    json=ws_config
+#)
+#check_request_status(r)
+#
+#
+#########################################################################
 # Modification de la configuration des canaux "Pay at POS" et "Mobile
 # app".
 # La configuration par défaut pour chaque canal est héritée de la
@@ -2507,7 +2506,7 @@ set_admin_group_permissions(
             'login',
             ],
         visible_transaction_fields=[],#all_transaction_fields,
-        my_access_clients = ['ID_CLIENT_MAIN'],
+        my_access_clients = [ID_CLIENT_MAIN],
         transfer_status_flows=[],#all_status_flows,
         system_accounts=all_system_accounts,
         system_to_system_payments=[ ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE ],#all_system_to_system_payments,

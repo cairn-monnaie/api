@@ -9,6 +9,7 @@ services:
 
   cyclos-db:
     volumes:
-      - ./etc/cyclos/dump/cyclos.sql:/docker-entrypoint-initdb.d/cyclos.sql
-      - ./data/cyclos/postgresql:/var/lib/postgresql/data
+        - ./data/cyclos/postgresql:/var/lib/postgresql/data
+        - ./etc/cyclos/dump/cyclos.sql:/cyclos.sql
 
+      

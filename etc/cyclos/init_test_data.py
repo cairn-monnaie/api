@@ -280,6 +280,14 @@ if ENV != 'prod':
             password = '@@bbccdd',
         )
 
+    create_user(
+        group='Adhérents utilisateurs',
+        name='Max Maz',
+        login='mazmax',
+        email = 'maxime.mazouth-laurol@cairn-monnaie.com',
+        password = '@@bbccdd',
+    )
+
     for member in adherents_prestataires:
         create_user(
             group='Adhérents prestataires',
@@ -353,6 +361,21 @@ if ENV != 'prod':
             return date.strftime("%Y")+ '-' + date.strftime("%m")+'-'+date.strftime("%d")
 
 
+    def credit_numeric_money_safe(amount):
+        logger.info('Creation de MLC numeriques  ...')
+        r = requests.post(network_web_services + 'payment/perform',
+                          headers={'Authorization': 'Basic {}'.format(base64.standard_b64encode(b'admin_network:@@bbccdd').decode('utf-8'))},
+                          json={
+                              'type': CYCLOS_CONSTANTS['payment_types']['creation_mlc_numeriques'],
+                              'amount': amount,
+                              'currency': CYCLOS_CONSTANTS['currencies']['mlc'],
+                              'from': 'SYSTEM',
+                              'to': 'SYSTEM',
+                              'description': 'creation initiale de ' + LOCAL_CURRENCY_INTERNAL_NAME ,
+                          })
+        logger.info('Creation de MLC numeriques... Terminé !')
+        logger.debug(r.json())
+
     def credit_de_compte(member,amount):
         logger.info('Change numérique pour ' + member[1] + ' ...')
         r = requests.post(network_web_services + 'payment/perform',
@@ -396,6 +419,9 @@ if ENV != 'prod':
                           })
         logger.info('Virement de ' + str(amount) + ' ' + LOCAL_CURRENCY_INTERNAL_NAME + ' '  + debitor + ' vers ' + creditor + ' ... Terminé !')
         logger.debug(r.json())
+
+    #Creation initiale de MLC numeriques
+    credit_numeric_money_safe(100000)
 
     # Changes numériques afin d'avoir des comptes avec des soldes non nuls + des opérations à injecter dans l'appli CEL
     logger.info('Changes numériques en '+ LOCAL_CURRENCY_INTERNAL_NAME +' pour tous les pros à Grenoble...')
