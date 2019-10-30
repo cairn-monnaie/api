@@ -421,7 +421,7 @@ if ENV != 'prod':
         logger.debug(r.json())
 
     #Creation initiale de MLC numeriques
-    credit_numeric_money_safe(100000)
+    credit_numeric_money_safe(10000000000)
 
     # Changes numériques afin d'avoir des comptes avec des soldes non nuls + des opérations à injecter dans l'appli CEL
     logger.info('Changes numériques en '+ LOCAL_CURRENCY_INTERNAL_NAME +' pour tous les pros à Grenoble...')
@@ -429,7 +429,7 @@ if ENV != 'prod':
                  str(CYCLOS_CONSTANTS['account_types']['compte_de_debit_mlc_numerique']) + "\r\n" +
                  str(CYCLOS_CONSTANTS['account_types']['compte_d_adherent']))
 
-    initial_credit = 2000
+    initial_credit = 1000
 
     for pro in adherents_prestataires:
         if pro[2] == 'Grenoble':
