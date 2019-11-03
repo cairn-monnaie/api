@@ -1217,6 +1217,13 @@ ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE = create_payment_transfer_type(
     to_account_type_id=ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE ,
 )
 
+ID_TYPE_PAIEMENT_SORTIE_COFFRE_NUMERIQUE = create_payment_transfer_type(
+    name='Destruction MLC numeriques',
+    direction='SYSTEM_TO_SYSTEM',
+    from_account_type_id=ID_COMPTE_DE_DEBIT_CURRENCY_NUMERIQUE ,
+    to_account_type_id=ID_COFFRE_MLC_NUMERIQUE ,
+)
+
 ID_TYPE_PAIEMENT_ENTREE_COFFRE = create_payment_transfer_type(
     name='Entrée coffre',
     direction='SYSTEM_TO_SYSTEM',
@@ -1794,7 +1801,8 @@ all_system_to_system_payments = [
     ID_TYPE_PAIEMENT_DESTRUCTION_BILLETS,
     ID_TYPE_PAIEMENT_SORTIE_COFFRE,
     ID_TYPE_PAIEMENT_ENTREE_COFFRE,
-    ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE
+    ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE,
+    ID_TYPE_PAIEMENT_SORTIE_COFFRE_NUMERIQUE
 ]
 all_system_to_user_payments = [
     ID_TYPE_PAIEMENT_ENTREE_STOCK_BDC,
@@ -2509,7 +2517,7 @@ set_admin_group_permissions(
         my_access_clients = [ID_CLIENT_MAIN],
         transfer_status_flows=[],#all_status_flows,
         system_accounts=all_system_accounts,
-        system_to_system_payments=[ ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE ],#all_system_to_system_payments,
+        system_to_system_payments=[ ID_TYPE_PAIEMENT_ENTREE_COFFRE_NUMERIQUE,ID_TYPE_PAIEMENT_SORTIE_COFFRE_NUMERIQUE ],#all_system_to_system_payments,
         system_to_user_payments=all_system_to_user_payments,
         chargeback_of_payments_to_system=all_payments_to_system,
         accessible_user_groups=[
