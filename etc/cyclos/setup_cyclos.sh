@@ -1,5 +1,4 @@
 #!/bin/bash
-set -x
 set -e
 
 WORKDIR=$(pwd)
@@ -16,7 +15,7 @@ done
 if [ ! -f ./cyclos_constants_$ENV.yml ]; then
     read -p "Global Admin Login?" login
     read -p "Global Admin password?" password
-    
+
     PASS=`echo -n $login:$password | base64`
 
     python setup.py http://cyclos-app:8080/ $PASS
@@ -34,11 +33,11 @@ exec "$@"
 
 # This cd will do this: cd /cyclos/
 #~ cd "${0%/*}"
-#~ 
+#~
 #~ echo $PWD
-#~ 
+#~
 #~ rm -f cyclos_constants.yml
-#~ 
+#~
 #~ # Base64('admin:admin') = YWRtaW46YWRtaW4=
 #~ python setup.py http://cyclos-app:8080/ YWRtaW46YWRtaW4=
 #~ python init_static_data.py http://cyclos-app:8080/ YWRtaW46YWRtaW4=
