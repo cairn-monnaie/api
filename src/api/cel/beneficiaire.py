@@ -1,7 +1,7 @@
 from django.core.exceptions import ObjectDoesNotExist
 from django.forms.models import model_to_dict
 from rest_framework import exceptions, serializers as drf_serializers, status, viewsets
-from rest_framework.decorators import list_route
+from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from cel import models, serializers
@@ -15,7 +15,7 @@ class BeneficiaireViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return models.Beneficiaire.objects.filter(owner=self.request.user)
 
-    @list_route(methods=['get'])
+    @action(detail=False,methods=['get'])
     def search(self, request, *args, **kwargs):
         query = request.query_params.get('number', False)
         res = None

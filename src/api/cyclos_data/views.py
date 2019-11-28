@@ -106,10 +106,6 @@ def get_digital_mlc_available(request):
     try:
         cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
         try:
-#            auth_token = request.query_params['api_key']
-#            username = request.query_params['username']
-#            log.debug('username : ' + username)
-#            log.debug('auth_token : ' + auth_token)
             query_data = [cyclos.user_id, None]
             accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
 
