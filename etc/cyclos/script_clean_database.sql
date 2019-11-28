@@ -19,6 +19,7 @@ delete from stored_files where transaction_value_id is not null;
 delete from transaction_custom_field_values;
 delete from scheduled_payment_installments where id in (select scheduled_payment_installment_id from transfers where id in (select id from del_transfers));
 delete from scheduled_payment_installments where scheduled_payment_id in (select id from del_transactions);
+delete from failed_payment_occurrences where recurring_payment_id in (select id from del_transactions);
 delete from transaction_authorizations;
 delete from refs;
 delete from transactions where id in (select id from del_transactions);
