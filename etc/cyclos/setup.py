@@ -443,60 +443,13 @@ all_access_clients = [
     ID_CLIENT_MAIN
 ]
 
+
 #########################################################################
-## Modification du canal web services à l'echelle réseau pour autoriser
-## la connexion via le client SMS
-## D'abord on récupère l'id de la config par défaut.
-#logger.info('Récupération de l\'id de la configuration par défaut...')
-#r = requests.get(network_web_services + 'configuration/getDefault',
-#                 headers=headers)
-#check_request_status(r)
-#mlc_default_config_id = r.json()['result']['id']
-#
-## Puis on liste les config de canaux pour retrouver l'id de la config
-## du canal "Web services".
-#r = requests.get(
-#    network_web_services + 'channelConfiguration/list/' + mlc_default_config_id,
-#    headers=headers
-#)
-#check_request_status(r)
-#for channel_config in r.json()['result']:
-#    if channel_config['channel']['internalName'] == 'webServices':
-#        ws_config_id = channel_config['id']
-#
-## Ensuite on charge la config du canal "Web services", pour pouvoir la
-## modifier.
-#r = requests.get(
-#    global_web_services + 'channelConfiguration/load/' + ws_config_id,
-#    headers=headers
-#)
-#check_request_status(r)
-#ws_config = r.json()['result']
-#
-#logger.info('Récupération de la liste des types de mots de passe...')
-#r = requests.get(network_web_services + 'passwordType/list', headers=headers)
-#check_request_status(r)
-#password_types = r.json()['result']
-#for password_type in password_types:
-#    if password_type['internalName'] == 'login':
-#        ID_PASSWORD_LOGIN = password_type['id']
-#logger.debug('ID_PASSWORD_LOGIN = %s', ID_PASSWORD_LOGIN)
-#
-#ws_config['principalTypes'] = [ID_PASSWORD_LOGIN ]
-#r = requests.post(
-#    global_web_services + 'channelConfiguration/save',
-#    headers=headers,
-#    json=ws_config
-#)
-#check_request_status(r)
-#
-#
-#########################################################################
-# Modification de la configuration des canaux "Pay at POS" et "Mobile
-# app".
+# Modification de la configuration des canaux "Pay at POS", "Mobile
+# app" et "web services"
 # La configuration par défaut pour chaque canal est héritée de la
 # configuration globale. Pour personnaliser cette configuration au
-# niveau du réseau Eusko, il faut créer une nouvelle configuration
+# niveau du réseau MLC, il faut créer une nouvelle configuration
 # pour chaque canal.
 # Ensuite on personnalise les configurations de la manière suivante :
 # - activation de chaque canal par défaut pour tous les utilisateurs
@@ -512,6 +465,18 @@ all_access_clients = [
 # Remarque : Il faut faire ces modifications après avoir créé le token
 # "Carte NFC" et l'access client "Point de vente NFC" car nous en avons
 # besoin pour configurer le canal "Mobile app".
+
+# - canal "web services" : on définit deux méthodes d'identification pour
+#   se connecter :
+#       - le login, pour les connexions "normales" via le site wen
+#       - le client "Main", pour pouvoir se connecter à
+#         cyclos en web services
+#       - le client "SMS" pour réaliser des paiement lors d'un paiement par SMS
+#
+# Remarque : Il faut faire ces modifications après avoir créé
+# les access client  car nous en avons
+# besoin pour configurer le canal "web services".
+
 #
 def get_data_for_new_channel_configuration(channel, configuration):
     logger.debug("get_data_for_new_channel_configuration(%s, %s)", channel, configuration)
@@ -570,6 +535,27 @@ r = requests.post(
 )
 check_request_status(r)
 
+# De le même manière, on crée une nouvelle configuration pour le canal
+# "services web".
+logger.info('Création d\'une nouvelle configuration pour le canal "Web services"...')
+new_ws_config = get_data_for_new_channel_configuration(
+    channel=ID_CANAL_WEB_SERVICES,
+    configuration=mlc_default_config_id)
+new_ws_config['defined'] = True
+new_ws_config['enabled'] = True
+new_ws_config['userAccess'] = 'ENFORCED_ENABLED'
+new_ws_config['principalTypes'] = [
+    ID_PRINCIPAL_TYPE_LOGIN_NAME,
+    ID_CLIENT_MAIN,
+    ID_CLIENT_SMS
+]
+logger.info('Sauvegarde de la nouvelle configuration de canal...')
+r = requests.post(
+    network_web_services + 'channelConfiguration/save',
+    headers=headers,
+    json=new_ws_config
+)
+check_request_status(r)
 
 ########################################################################
 # Création d'une configuration spécifique pour les groupes "Opérateurs
@@ -1922,6 +1908,8 @@ def create_member_product(name,
                           my_token_types=[],
                           system_payments=[],
                           user_payments=[],
+                          scheduled_payments=[],
+                          recurring_payments=[],
                           receive_payments=[]):
     logger.info('Création du produit "%s"...', name)
     # On commence par créer le produit avec les propriétés de base.
@@ -2007,7 +1995,8 @@ def create_member_product(name,
     product['systemPayments'] = system_payments
     product['userPayments'] = user_payments
     product['receivePayments'] = receive_payments
-    product['myScheduledPayments'] = ['VIEW','CANCEL','PROCESS_INSTALLMENT']
+    product['myScheduledPayments'] = scheduled_payments
+    product['myRecurringPayments'] = recurring_payments
     r = requests.post(network_web_services + 'product/save',
                       headers=headers,
                       json=product)
@@ -2384,6 +2373,15 @@ ID_PRODUIT_ADHERENTS_PRESTATAIRES = create_member_product(
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_SMS,
     ],
+    scheduled_payments=[
+        'VIEW',
+        'CANCEL',
+        'PROCESS_INSTALLMENT'
+    ],
+    recurring_payments=[
+        'VIEW',
+        'CANCEL'
+    ],
     receive_payments=[
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
     ],
@@ -2433,6 +2431,15 @@ ID_PRODUIT_ADHERENTS_UTILISATEURS = create_member_product(
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_CARTE,
         ID_TYPE_PAIEMENT_PAIEMENT_PAR_SMS,
     ],
+    scheduled_payments=[
+        'VIEW',
+        'CANCEL',
+        'PROCESS_INSTALLMENT'
+    ],
+    recurring_payments=[
+        'VIEW',
+        'CANCEL'
+    ]
 )
 assign_product_to_group(ID_PRODUIT_ADHERENTS_UTILISATEURS,
                         ID_GROUPE_ADHERENTS_UTILISATEURS)

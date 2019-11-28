@@ -342,27 +342,23 @@ def reconversion(request):
     except CyclosAPIException:
         return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
 
+
     serializer = serializers.ReconversionSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)  # log.critical(serializer.errors)
 
-    try:
-        dolibarr = DolibarrAPI(api_key=request.user.profile.dolibarr_token)
-        dolibarr_member = dolibarr.get(model='members', sqlfilters="login='{}'".format(request.data['member_login']))[0]
-    except DolibarrAPIException:
-        return Response({'error': 'Unable to connect to Dolibarr!'}, status=status.HTTP_400_BAD_REQUEST)
-    except IndexError:
-        return Response({'error': 'Unable to fetch Dolibarr data! Maybe your credentials are invalid!?'},
-                        status=status.HTTP_400_BAD_REQUEST)
 
-    if dolibarr_member['type'].lower() == 'particulier':
+    member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
+    member_cyclos = cyclos.get(method='user/load', id=member_cyclos_id, token=request.user.profile.cyclos_token)['result']
+    member_name = member_cyclos['name']
+
+
+    if member_cyclos['group']['internalName'].lower() != 'adherents_prestataires':
         return Response({'error': 'Forbidden, reconversion is not available for non-business members!'},
                         status=status.HTTP_403_FORBIDDEN)
 
-    member_cyclos_id = cyclos.get_member_id_from_login(request.data['member_login'])
-
     # payment/perform
     query_data = {
-        'type': str(settings.CYCLOS_CONSTANTS['payment_types']['reconversion_billets_versement_des_mlc']),
+        'type': str(settings.CYCLOS_CONSTANTS['payment_types']['reconversion_billets_versement_des_mlcs']),
         'amount': request.data['amount'],
         'currency': str(settings.CYCLOS_CONSTANTS['currencies']['mlc']),
         'from': 'SYSTEM',
@@ -377,7 +373,7 @@ def reconversion(request):
                 'stringValue': request.data['facture']  # ID Facture
             },
         ],
-        'description': 'Reconversion - {} - {}'.format(request.data['member_login'], dolibarr_member['company']),
+        'description': 'Reconversion - {} - {}'.format(request.data['member_login'], member_cyclos['name']),
     }
 
     return Response(cyclos.post(method='payment/perform', data=query_data))
@@ -854,22 +850,7 @@ def depot_mlc_numerique(request):
 #    else:
 #        member_name = dolibarr_member['company']
 
-    # Get amount of available digital mlc
-    query_data = [cyclos.user_id, None]
-    accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
-
-    filter_keys = ['compte_de_debit_mlc_numerique']
-    for filter_key in filter_keys:
-        data = [item
-                for item in accounts_summaries_data['result']
-                if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['account_types'][filter_key])][0]
-
-        availableAmount = float(data['status']['balance'])
-
-    if float(request.data['amount']) > availableAmount:
-        credit_amount = availableAmount
-    else:
-        credit_amount = request.data['amount']
+    credit_amount = request.data['amount']
 
     # Retour des Eusko billets
     retour_mlc_billets_data = {
@@ -1159,22 +1140,7 @@ def change_euro_mlc_numeriques(request):
 #    else:
 #        member_name = dolibarr_member['company']
 
-    # Get amount of available digital mlc
-    query_data = [cyclos.user_id, None]
-    accounts_summaries_data = cyclos.post(method='account/getAccountsSummary', data=query_data)
-
-    filter_keys = ['compte_de_debit_mlc_numerique']
-    for filter_key in filter_keys:
-        data = [item
-                for item in accounts_summaries_data['result']
-                if item['type']['id'] == str(settings.CYCLOS_CONSTANTS['account_types'][filter_key])][0]
-
-        availableAmount = float(data['status']['balance'])
-
-    if float(request.data['amount']) > availableAmount:
-        credit_amount = availableAmount
-    else:
-        credit_amount = request.data['amount']
+    credit_amount = request.data['amount']
 
     # payment/perform
     bdc_query_data = {
