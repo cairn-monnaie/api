@@ -14,7 +14,7 @@ COPY etc/dolibarr /dolibarr
 RUN apt-get update && apt-get install -y \
         gcc \
         gettext \
-        mysql-client default-libmysqlclient-dev \
+        default-mysql-client default-libmysqlclient-dev \
         postgresql-client libpq-dev \
         sqlite3 \
     --no-install-recommends 
@@ -25,5 +25,5 @@ RUN apt-get install -y libfreetype6-dev wget xvfb wkhtmltopdf && \
 
 ENTRYPOINT ["/cyclos/setup_cyclos.sh"]
 
-EXPOSE 8000
+#EXPOSE 8000
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
