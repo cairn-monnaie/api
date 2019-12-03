@@ -899,7 +899,7 @@ def depot_mlc_numerique(request):
             'description': res['description'],
             'cyclos_token': request.user.profile.cyclos_token
             }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','deposit')
+    query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','deposit')
 
     try:
         res = requests.post(query_cel, json=data_cel)
@@ -1003,7 +1003,7 @@ def retrait_mlc_numerique(request):
             'description': res['description'],
             'cyclos_token': request.user.profile.cyclos_token
             }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','withdrawal')
+    query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','withdrawal')
 
     try:
         res = requests.post(query_cel, json=data_cel)
@@ -1196,7 +1196,7 @@ def change_euro_mlc_numeriques(request):
             'description': res['description'],
             'cyclos_token': request.user.profile.cyclos_token
             }
-    query_cel = '{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','conversion')
+    query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','conversion')
 
     try:
         res = requests.post(query_cel, json=data_cel)
