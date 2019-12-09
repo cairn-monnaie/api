@@ -897,7 +897,6 @@ def depot_mlc_numerique(request):
             'toAccountNumber': transfer['to']['number'],
             'reason': 'Dépôt sur le compte',
             'description': res['description'],
-            'cyclos_token': request.user.profile.cyclos_token
             }
     query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','deposit')
 
@@ -1001,7 +1000,6 @@ def retrait_mlc_numerique(request):
             'toAccountNumber': transfer['to']['number'],
             'reason': 'Retrait de compte',
             'description': res['description'],
-            'cyclos_token': request.user.profile.cyclos_token
             }
     query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','withdrawal')
 
@@ -1194,7 +1192,6 @@ def change_euro_mlc_numeriques(request):
             'toAccountNumber': transfer['to']['number'],
             'reason': 'Change numériquue',
             'description': res['description'],
-            'cyclos_token': request.user.profile.cyclos_token
             }
     query_cel = '{}/{}/{}/{}'.format(settings.CEL_PUBLIC_URL, 'operations','sync','conversion')
 
