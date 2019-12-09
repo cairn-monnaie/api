@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import os
 import argparse
 import logging
+import sys
 
 import requests
 from slugify import slugify
@@ -326,7 +327,6 @@ ID_RESEAU = create_network(
     name=NETWORK_INTERNAL_NAME,
     internal_name=NETWORK_INTERNAL_NAME,
 )
-
 
 ########################################################################
 # Création des devises "MLC" et "Euro".
@@ -1840,6 +1840,97 @@ all_payments_to_user = \
     + all_user_to_user_payments \
     + all_user_to_self_payments
 
+########################################################################
+# Creation des scripts et des points d extensions associés aux
+# transactions et transferts
+
+def create_custom_script(name,
+                          type,
+                          pathToScript,
+                          dependencies=[],
+                          parameters=None):
+    logger.info('Création du script "%s"...', name)
+    # On commence par créer le script avec les propriétés de base.
+    script = {
+        'class': 'org.cyclos.model.system.scripts.CustomScriptDTO',
+        'name': name,
+        'internalName': get_internal_name(name),
+        'runAsSystem': True
+    }
+    script['type'] = type
+    script['parameters'] = parameters
+
+    with open(pathToScript, 'r') as file:
+        data = file.read()
+    script['functions'] = {
+            'SAVED': data
+    }
+
+    r = requests.post(network_web_services + 'customScript/save',
+                      headers=headers,
+                      json=script)
+    check_request_status(r)
+    script_id = r.json()['result']
+    logger.debug('script_id = %s', script_id)
+    return script_id
+
+def create_extension_point_with_transfertype(name,
+                          extension_point_class,
+                          transfer_types,
+                          enabled,
+                          script,
+                          events=[]):
+    logger.info('Création du point d extension "%s"...', name)
+    # On commence par créer le point d'extension avec les propriétés de base.
+    extensionPoint = {
+        'class': extension_point_class,
+        'name': name,
+        'internalName': get_internal_name(name),
+        'enabled': enabled
+    }
+
+    extensionPoint['transferTypes']=transfer_types
+    extensionPoint['script']=script
+    extensionPoint['events']=events
+
+    r = requests.post(network_web_services + 'extensionPoint/save',
+                      headers=headers,
+                      json=extensionPoint)
+    check_request_status(r)
+    extension_point_id = r.json()['result']
+    logger.debug('extension_point_id = %s', extension_point_id)
+    return extension_point_id
+
+ID_TRANSACTION_SCRIPT = create_custom_script(
+    name='Warning failed asynchronous transactions',
+    type='EXTENSION_POINT',
+    pathToScript='script_transaction_extensionpoint.groovy'
+)
+
+ID_TRANSFER_SCRIPT = create_custom_script(
+    name='Asynchronous transfer sync',
+    type='EXTENSION_POINT',
+    pathToScript='script_transfer_extensionpoint.groovy'
+)
+
+ID_TRANSACTION_EXTENSION_POINT = create_extension_point_with_transfertype(
+    name='Warning failed asynchronous transactions',
+    extension_point_class='org.cyclos.model.system.extensionpoints.TransactionExtensionPointDTO',
+    transfer_types= [ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT],
+    enabled=True,
+    script=ID_TRANSACTION_SCRIPT,
+    events=['CHANGE_STATUS']
+)
+
+ID_TRANSFER_EXTENSION_POINT = create_extension_point_with_transfertype(
+    name='Asynchronous transfer sync',
+    extension_point_class='org.cyclos.model.system.extensionpoints.TransferExtensionPointDTO',
+    transfer_types=[ID_TYPE_PAIEMENT_VIREMENT_INTER_ADHERENT],
+    enabled=True,
+    script=ID_TRANSFER_SCRIPT,
+    events=['CREATE']
+)
+
 
 ########################################################################
 # Création des champs personnalisés pour les profils utilisateur.
@@ -2048,7 +2139,10 @@ def set_admin_group_permissions(
         payments_as_user_to_user=[],
         payments_as_user_to_system=[],
         payments_as_user_to_self=[],
-        chargeback_of_payments_to_user=[]):
+        user_scheduled_payments=[],
+        user_recurring_payments=[],
+        chargeback_of_payments_to_user=[]
+        ):
     # Récupération de l'id du produit de ce groupe.
     product_id = get_admin_product(group_id)
     # Chargement du produit
@@ -2150,7 +2244,9 @@ def set_admin_group_permissions(
     product['systemPaymentsAsUser'] = payments_as_user_to_system
     product['selfPaymentsAsUser'] = payments_as_user_to_self
     product['chargebackPaymentsToUser'] = chargeback_of_payments_to_user
-    product['userScheduledPayments'] = ['VIEW','CANCEL','PROCESS_INSTALLMENT']
+    product['userScheduledPayments'] = user_scheduled_payments #['VIEW','CANCEL','PROCESS_INSTALLMENT']
+    product['userRecurringPayments'] = user_recurring_payments #['VIEW']
+
 
     # Enregistrement du produit modifié
     r = requests.post(network_web_services + 'product/save',
@@ -2558,6 +2654,8 @@ set_admin_group_permissions(
         payments_as_user_to_user=all_user_to_user_payments,
         payments_as_user_to_system=all_user_to_system_payments,
         payments_as_user_to_self=[],#all_user_to_self_payments,
+        user_scheduled_payments = ['VIEW','CANCEL','PROCESS_INSTALLMENT'],
+        user_recurring_payments = ['VIEW'],
         chargeback_of_payments_to_user=all_payments_to_user
 )
 
@@ -2699,6 +2797,7 @@ set_admin_group_permissions(
         ID_TYPE_PAIEMENT_CHANGE_NUMERIQUE_EN_LIGNE_VERSEMENT_DES_MLC,
         ID_TYPE_PAIEMENT_CREDIT_DU_COMPTE
     ],
+    access_user_accounts=[ID_COMPTE_ADHERENT],
     accessible_user_groups=[
         ID_GROUPE_ADHERENTS_PRESTATAIRES,
         ID_GROUPE_ADHERENTS_UTILISATEURS,
@@ -2709,6 +2808,8 @@ set_admin_group_permissions(
     ],
 #    change_group='MANAGE',
     disabled_users='MANAGE',
+    user_scheduled_payments = ['VIEW'],
+    user_recurring_payments = ['VIEW'],
 #    user_password_actions=[
 #        'login',
 #    ],
