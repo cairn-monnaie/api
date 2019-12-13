@@ -6,10 +6,14 @@ services:
       - ./src/api:/usr/src/app
       - ./etc/cyclos:/cyclos
       - ./etc/dolibarr:/dolibarr
-
+      
   cyclos-db:
     volumes:
         - ./data/cyclos/postgresql:/var/lib/postgresql/data
         - ./etc/cyclos/dump/cyclos.sql:/cyclos.sql
+
+  cyclos-app:
+    volumes:
+        - ./etc/cyclos/logs:/var/log/cyclos
 
       
