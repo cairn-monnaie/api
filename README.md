@@ -18,6 +18,23 @@ L'application API (ce dépôt) est centrale dans le fonctionnement des différen
 ## Installation 
   
  * **Construire nos images Docker**
+    * _Créer le conteneur de l'application Cyclos_
+      Copier le fichier template des variables d'environnement docker.   
+       `cp .env.dist .env`
+      Attirbuer des valeurs aux différentes variables.   
+       `CYCLOS_PORT=1234                              : port d'exposition de l'application Cyclos  
+        CURRENCY_SLUG=cairn                           : slug du nom de la monnaie  
+        CURRENCY_SYMBOL=CRN                           : symbole représentatif de la monnaie
+        ENV=dev                                       : environnement  
+        SESSION_TIMEOUT=1500                          : temps de session des web services (en secondes)
+        MIN_LENGTH_PWD=8                              : nombre de caractères minimum des mots de passe
+        MAX_LENGTH_PWD=25                             : nombre de caractères maximum des mots de passe
+        DJANGO_DEBUG=true                             : mettre False en environnement de production
+        EMAIL_NOTIFICATION_GESTION=admin@localhost.fr : inutilisé
+        POSTGRES_DB=cyclos                            : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
+        POSTGRES_USER=cyclos                          : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
+        POSTGRES_PASSWORD=cyclos                      : mot de passe de l'utilisateur postgres pouvant accéder à la BDD Cylos
+       `
 
     Nos images sont générées à partir du `Dockerfile` du dossier racine ainsi que ses dépendances. Il s'agit de celle du service _api_ dans le fichier de configuration docker nommé `docker_compose.yml: services.api.build = .`   
     ```
@@ -36,26 +53,6 @@ L'application API (ce dépôt) est centrale dans le fonctionnement des différen
 
     **WARNING** : il s'agit d'un dump correspondant à une licence gratuite, prise en janvier 2019, qui expirera donc dans le futur. Il faudra donc recréer un dump à partir d'une nouvelle licence.  
 
-    * _Créer le conteneur de l'application Cyclos_
-      Copier le fichier template des variables d'environnement docker.   
-       `cp .env.dist .env`
-      Attirbuer des valeurs aux différentes variables.   
-       `CYCLOS_PORT=1234                              : port d'exposition de l'application Cyclos  
-        CURRENCY_SLUG=cairn                           : slug du nom de la monnaie  
-        CURRENCY_SYMBOL=CRN                           : symbole représentatif de la monnaie
-        ENV=dev                                       : environnement  
-        SESSION_TIMEOUT=1500                          : temps de session des web services (en secondes)
-        MIN_LENGTH_PWD=8                              : nombre de caractères minimum des mots de passe
-        MAX_LENGTH_PWD=25                             : nombre de caractères maximum des mots de passe
-        DJANGO_DEBUG=true                             : mettre False en environnement de production
-        EMAIL_NOTIFICATION_GESTION=admin@localhost.fr : inutilisé
-        POSTGRES_DB=cyclos                            : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
-        POSTGRES_USER=cyclos                          : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
-        POSTGRES_PASSWORD=cyclos                      : mot de passe de l'utilisateur postgres pouvant accéder à la BDD Cylos
-       `
-     
-
-     
 * **Générer la configuration finale de Cyclos et un jeu de données**
    
     Dans le cadre de la documentation, nous allons nous mettre en situation de développement (${ENV}='dev'), c'est-à-dire `services.api.environment.ENV = dev`, mais la méthode est la même pour un environnement différent (test / prod)  
