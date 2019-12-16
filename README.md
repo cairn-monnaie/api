@@ -22,7 +22,7 @@ L'application API (ce dépôt) est centrale dans le fonctionnement des différen
       Copier le fichier template des variables d'environnement docker.   
        `cp .env.dist .env`
       Attirbuer des valeurs aux différentes variables.   
-       `CYCLOS_PORT=1234                              : port d'exposition de l'application Cyclos  
+       ```CYCLOS_PORT=1234                              : port d'exposition de l'application Cyclos  
         CURRENCY_SLUG=cairn                           : slug du nom de la monnaie  
         CURRENCY_SYMBOL=CRN                           : symbole représentatif de la monnaie
         ENV=dev                                       : environnement  
@@ -34,7 +34,7 @@ L'application API (ce dépôt) est centrale dans le fonctionnement des différen
         POSTGRES_DB=cyclos                            : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
         POSTGRES_USER=cyclos                          : identifiant de l'utilisateur postgres pouvant accéder à la BDD Cylos
         POSTGRES_PASSWORD=cyclos                      : mot de passe de l'utilisateur postgres pouvant accéder à la BDD Cylos
-       `
+       ```
 
     Nos images sont générées à partir du `Dockerfile` du dossier racine ainsi que ses dépendances. Il s'agit de celle du service _api_ dans le fichier de configuration docker nommé `docker_compose.yml: services.api.build = .`   
     ```
