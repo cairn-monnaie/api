@@ -73,7 +73,7 @@ check_request_status(r)
 # Création des utilisateurs pour les banques de dépôt et les comptes
 # dédiés.
 #
-def create_user(group, name, login, email=None, password=None,city=None, custom_values=None):
+def create_user(group, name, login, email=None, password=None,address={}, custom_values=None):
     logger.info('Création de l\'utilisateur "%s" (groupe "%s")...', name, group)
     # FIXME code à déplacer pour ne pas l'exécuter à chaque fois
     r = requests.post(network_web_services + 'group/search',
@@ -83,8 +83,11 @@ def create_user(group, name, login, email=None, password=None,city=None, custom_
     for g in groups:
         if g['name'] == group:
             group_id = g['id']
-    if not city:
-        city = 'Grenoble'
+    if not address:
+        address = {'street':'7 rue Très Cloitres',
+                'city':'Grenoble',
+                'zipCode':'38000'}
+
     user_registration = {
         'group': group_id,
         'name': name,
@@ -93,8 +96,9 @@ def create_user(group, name, login, email=None, password=None,city=None, custom_
         'addresses':[
             {
                 'name': 'work',
-                'addressLine1': '10 rue du test',
-                'city': city,
+                'addressLine1': address['street'],
+                'city': address['city'],
+                'zip': address['zipCode'],
                 'defaultAddress': True,
                 'hidden': False
                 }
@@ -223,52 +227,52 @@ if ENV != 'prod':
     ]
 
     adherents_prestataires = [
-        ['asso_mlc', 'Association Monnaie Locale','Grenoble'],
-        ['maltobar', 'MaltOBar','Grenoble'],
-        ['labonnepioche', 'La Bonne Pioche','Grenoble'],
-        ['DrDBrew', 'DocteurD Brew Pub','Grenoble'],
-        ['apogee_du_vin', 'Apogée du vin','Grenoble'],
-        ['tout_1_fromage', 'Tout un fromage','Grenoble'],
-        ['vie_integrative', 'vie intégrative','Voiron'],
-        ['denis_ketels', 'Denis Ketels','Voiron'], #used only for changePassword test
-        ['nico_faus_prod', 'Nico Faus Production','Grenoble'],
-        ['hirundo_archi', 'Hirundo Architecture','Villard-de-Lans'],
-        ['maison_bambous', 'Maison aux Bambous','Vinay'],
-        ['recycleco', 'Recycleco','Saint-Marcellin'],
-        ['elotine_photo', 'Elotine Photo','Grenoble'],
-        ['boule_antan', 'La Boule d Antan','Villard-de-Lans'],
-        ['la_remise', 'La Remise','Grenoble'],
-        ['episol', 'Episol','Grenoble'],
-        ['alter_mag', 'Alter Mag','Saint-Marcellin'],
-        ['verre_a_soi', 'Le Verre à soi','Bilieu'],
-        ['FluoDelik', 'Fluodélik','Méaudre'],
-        ['1001_saveurs', '1001 Saveurs','Villard-de-Lans'],
-        ['belle_verte', 'La Belle Verte','Susville'],
-        ['kheops_boutique', 'Khéops boutique','Saint-Marcellin'],
-        ['ferme_bressot', 'La ferme du Bressot','Beaulieu'],
-        ['atelier_eltilo', 'Atelier Eltilo','Grenoble'],
-        ['la_belle_verte', 'Belle Verte Permaculture','Sillans'],
-        ['mon_vrac', 'Mon Vrac','Voiron'],
-        ['le_marque_page', 'Le Marque Page','Saint-Marcellin'],
-        ['boutik_creative', 'La Boutik Creative','Rives'],
-        ['pain_beauvoir', 'Le Pain de Beauvoir','Beauvoir-en-Royans'],
-        ['la_mandragore', 'La Mandragore','Grenoble'],
-        ['jardins_epices', 'Les jardins epicés tout','Herbeys'],
-        ['lib_colibri', 'Librairie Colibri','Voiron'],
-        ['Claire_Dode', 'La Vie Claire Dode','Voiron'],
-        ['fil_chantant', 'Le Fil qui Chante','Voiron'],
-        ['epicerie_sol', 'Epicerie Solidaire Amandine','Voiron'],
-        ['NaturaVie', 'Naturavie','Voiron'],
-        ['montagne_arts', 'Les montagnarts','Valbonnais'],
-        ['Biocoop', 'Biocoop','Chatte'],
-        ['Alpes_EcoTour', 'Alpes Ecotourisme','Grenoble'],
-        ['trankilou', 'Le Trankilou','Grenoble']
+        ['asso_mlc', 'Association Monnaie Locale','7 rue Très Cloitres','Grenoble','38000'],
+        ['maltobar', 'MaltOBar','1 place Edmond Arnaud','Grenoble','38000'],
+        ['labonnepioche', 'La Bonne Pioche','2 rue Condillac','Grenoble','38000'],
+        ['DrDBrew', 'DocteurD Brew Pub','2 rue des Clercs','Grenoble','38000'],
+        ['apogee_du_vin', 'Apogée du vin','6 rue Lesdigueres','Grenoble','38000'],
+        ['tout_1_fromage', 'Tout un fromage','99 Cours Berriat','Grenoble','38000'],
+        ['vie_integrative', 'vie intégrative','1 Avenue Georges Frier','Voiron','38500'],
+        ['denis_ketels', 'Denis Ketels','36 RUE SERMORENS','Voiron','38500'], #used only for changePassword test
+        ['nico_faus_prod', 'Nico Faus Production','1 rue Colonel Dumont','Grenoble','38000'],
+        ['hirundo_archi', 'Hirundo Architecture','30 rue Nicolas Chorier','Grenoble','38000'],
+        ['maison_bambous', 'Maison aux Bambous','100 Chemin du Tilleul','Vinay','38470'],
+        ['recycleco', 'Recycleco','Route de la Croix de May','Saint-Sauveur','38160'],
+        ['elotine_photo', 'Elotine Photo','13 Rue Montorge','Grenoble','38000'],
+        ['boule_antan', 'La Boule d Antan','50 Rue Vaucanson','Villard-de-Lans','38250'],
+        ['la_remise', 'La Remise','35 Rue Général Ferrié','Grenoble','38100'],
+        ['episol', 'Episol','45 Rue Général Ferrié','Grenoble','38000'],
+        ['alter_mag', 'Alter Mag','39 grande Rue','Saint-Marcellin','38160'],
+        ['verre_a_soi', 'Le Verre à soi','34 ROUTE DE CHARAVINES','Bilieu','38850'],
+        ['FluoDelik', 'Fluodélik','La place Gérard Clet','Méaudre','38112'],
+        ['1001_saveurs', '1001 Saveurs','69 Rue des Pionniers','Villard-de-Lans','38250'],
+        ['belle_verte', 'La Belle Verte','Route Pont de la Fange','Susville','38350'],
+        ['kheops_boutique', 'Khéops boutique','40 grande Rue','Saint-Marcellin','38160'],
+        ['ferme_bressot', 'La ferme du Bressot','761 chemin du Bressot','Beaulieu','38470'],
+        ['atelier_eltilo', 'Atelier Eltilo','147 bis cours Berriat','Grenoble','38000'],
+        ['la_belle_verte', 'Belle Verte Permaculture','589 rue Vaugauthier','Sillans','38590'],
+        ['mon_vrac', 'Mon Vrac','16 Rue Dode','Voiron','38500'],
+        ['le_marque_page', 'Le Marque Page','8 grande Rue','Saint-Marcellin','38160'],
+        ['boutik_creative', 'La Boutik Creative','54 Rue de la République','Rives','38140'],
+        ['pain_beauvoir', 'Le Pain de Beauvoir','18 Rue porte d\'aris','Beauvoir-en-Royans','38160'],
+        ['la_mandragore', 'La Mandragore','4 bis Rue de Bonne','Grenoble','38000'],
+        ['jardins_epices', 'Les jardins epicés tout','967 Chemin des Terres','Herbeys','38320'],
+        ['lib_colibri', 'Librairie Colibri','6 Rue Adolphe Péronnet','Voiron','38500'],
+        ['Claire_Dode', 'La Vie Claire Dode',' 6 Rue Louis Leprince Ringuet','Voiron','38500'],
+        ['fil_chantant', 'Le Fil qui Chante','3 Rue Porte de la Buisse','Voiron','38500'],
+        ['epicerie_sol', 'Epicerie Solidaire Amandine','14 Rue Porte de la Buisse','Voiron','38500'],
+        ['NaturaVie', 'Naturavie','12 rue Dode','Voiron','38500'],
+        ['montagne_arts', 'Les montagnarts','1034 Rue Principale','Valbonnais','38740'],
+        ['Biocoop', 'Biocoop','ZA La Gloriette','Chatte','38160'],
+        ['Alpes_EcoTour', 'Alpes Ecotourisme','63 rue emile Zola','Grenoble','38100'],
+        ['trankilou', 'Le Trankilou','45 Boulevard Joseph Vallier','Grenoble','38000']
     ]
 
     groupes_locaux = [
-        ['gl_grenoble', 'Groupe Local Grenoble','Grenoble'],
-        ['gl_voiron', 'Groupe Local Voiron','Voiron'],
-        ['gl_tullins', 'Groupe Local Tullins','Tullins'],
+        ['gl_grenoble', 'Groupe Local Grenoble','7 rue Très Cloitres','Grenoble','38000'],
+        ['gl_voiron', 'Groupe Local Voiron','12 Rue Mainssieux','Voiron','38500'],
+        ['gl_tullins', 'Groupe Local Tullins','Clos des Chartreux','Tullins','38210'],
     ]
 
     for member in adherents_utilisateurs:
@@ -294,8 +298,8 @@ if ENV != 'prod':
             name=member[1],
             login=member[0],
             email = member[0] + '@test.fr',
-            city = member[2],
             password = '@@bbccdd',
+            address = {'street': member[2],'city':member[3],'zipCode':member[4]}
         )
 
     for member in groupes_locaux:
@@ -304,8 +308,8 @@ if ENV != 'prod':
             name=member[1],
             login=member[0],
             email = member[0] + '@test.fr',
-            city = member[2],
             password = '@@bbccdd',
+            address = {'street': member[2],'city':member[3],'zipCode':member[4]}
         )
 
     porteurs = {

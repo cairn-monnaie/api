@@ -238,7 +238,7 @@ global_default_config['defaultEmailPrivacy'] = 'VISIBLE_TO_OTHER_USERS'
 # Utile notamment car l'applcation SIMM basée sur Cyclos et non Dolibarr :
 # peut-être qu'on voudra avoir accès à ces informations..
 global_default_config['addressConfiguration'] = {
-    'enabledAddressFields': ['ADDRESS_LINE_1','CITY']
+    'enabledAddressFields': ['ADDRESS_LINE_1','CITY','ZIP']
 }
 r = requests.post(
     global_web_services + 'configuration/save',
