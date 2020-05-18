@@ -19,11 +19,11 @@ import gestioninterne.credits_comptes_prelevements_auto as credits_views
 
 
 router = routers.SimpleRouter()
-router.register(r'bdc', BDCAPIView, base_name='bdc')
-router.register(r'members', MembersAPIView, base_name='members')
-router.register(r'members-subscriptions', MembersSubscriptionsAPIView, base_name='members-subscriptions')
-router.register(r'beneficiaires', BeneficiaireViewSet, base_name='beneficiaires')
-router.register(r'securityqa', SecurityQAViewSet, base_name='securityqa')
+router.register(r'bdc', BDCAPIView, basename='bdc')
+router.register(r'members', MembersAPIView, basename='members')
+router.register(r'members-subscriptions', MembersSubscriptionsAPIView, basename='members-subscriptions')
+router.register(r'beneficiaires', BeneficiaireViewSet, basename='beneficiaires')
+router.register(r'securityqa', SecurityQAViewSet, basename='securityqa')
 
 urlpatterns = [
     # Auth token
@@ -36,6 +36,7 @@ urlpatterns = [
     url(r'^countries/$', dolibarr_data_views.countries),
     url(r'^bdc-name/$', cyclos_data_views.get_bdc_name),
     url(r'^available-electronic-mlc/$', cyclos_data_views.get_digital_mlc_available),
+    url(r'^user-accounts/(?P<member_id>[-]?\d+)/$', cyclos_data_views.get_accounts),
     url(r'^member-name/$', dolibarr_data_views.get_member_name),
     url(r'^user-data/$', dolibarr_data_views.get_user_data),
     url(r'^username/$', dolibarr_data_views.get_username),

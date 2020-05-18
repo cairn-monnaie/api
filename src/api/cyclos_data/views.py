@@ -129,6 +129,27 @@ def get_digital_mlc_available(request):
 
     return Response(res[filter_key])
 
+@api_view(['GET'])
+def get_accounts(request,member_id):
+    """
+    Get the adherent cyclos accounts
+    """
+
+    try:
+        cyclos = CyclosAPI(token=request.user.profile.cyclos_token, mode='bdc')
+        try:
+            member_account_summary_query = [member_id, None]  # ID de l'adhérent
+            member_account_summary_res = cyclos.post(method='account/getAccountsSummary', data=member_account_summary_query)
+
+        except (CyclosAPIException, KeyError, IndexError):
+            return Response({'error': 'Unable to get user accounts !'},
+                    status=status.HTTP_400_BAD_REQUEST)
+
+    except CyclosAPIException:
+        return Response({'error': 'Unable to connect to Cyclos!'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(member_account_summary_res['result'])
+
 #@api_view(['GET'])
 #def get_usergroups(request):
 #    """
